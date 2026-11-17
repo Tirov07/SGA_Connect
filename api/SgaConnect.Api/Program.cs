@@ -278,4 +278,44 @@ app.MapGet("/resumo", (HttpContext ctx, DescobridorEmpresas descobridor) =>
     return Results.Ok(resumo);
 }).RequireAuthorization();
 
+// Vendas diarias do mes (grafico da home): por dia, peca e servico das OSv fechadas.
+// Parametro opcional ?mes=AAAA-MM (default: mes atual). Empresa vem do token.
+app.MapGet("/vendas-diarias", (HttpContext ctx, DescobridorEmpresas descobridor, string? mes) =>
+{
+    var empresaChave = ctx.User.FindFirst("empresa")?.Value;
+    var codEmpresaStr = ctx.User.FindFirst("codEmpresa")?.Value;
+    if (string.IsNullOrWhiteSpace(empresaChave) || !int.TryParse(codEmpresaStr, out var codEmpresa))
+        return Results.Unauthorized();
+
+    var empresa = descobridor.Resolver(empresaChave);
+    if (empresa is null)
+        return Results.NotFound(new { erro = $"Empresa '{empresaChave}' nao encontrada." });
+
+    if (!OperatingSystem.IsWindows())
+        return Results.Json(new { erro = "Leitura do SGA (Access) so no Windows." }, statusCode: StatusCodes.Status503ServiceUnavailable);
+
+    // mes = "AAAA-MM"; se ausente/invalido, usa o mes atual.
+    int ano = DateTime.Today.Year, mesNum = DateTime.Today.Month;
+    if (!string.IsNullOrWhiteSpace(mes))
+    {
+        var partes = mes.Split('-');
+        if (partes.Length != 2 || !int.TryParse(partes[0], out ano) || !int.TryParse(partes[1], out mesNum)
+            || mesNum < 1 || mesNum > 12)
+            return Results.BadRequest(new { erro = "Parametro 'mes' invalido. Use AAAA-MM." });
+    }
+
+    var repo = new RepositorioVendas(new LeitorSga(empresa.CaminhoBanco));
+    var dias = repo.VendasDiarias(codEmpresa, ano, mesNum)
+        .Select(d => new VendaDiaDto(d.Dia, d.Peca, d.Servico))
+        .ToList();
+
+    return Results.Ok(new VendasDiariasResponse(
+        Ano: ano,
+        Mes: mesNum,
+        DiasNoMes: DateTime.DaysInMonth(ano, mesNum),
+        TotalPeca: dias.Sum(d => d.Peca),
+        TotalServico: dias.Sum(d => d.Servico),
+        Dias: dias));
+}).RequireAuthorization();
+
 app.Run();

@@ -33,3 +33,15 @@ public sealed record ResumoResponse(
     decimal TotalAPagarMes);
 
 public sealed record EmpresaResumo(string Chave, string NomePasta, bool BancoExiste);
+
+/// <summary>Faturamento de um dia: peca e servico das OSv fechadas no dia.</summary>
+public sealed record VendaDiaDto(int Dia, decimal Peca, decimal Servico);
+
+/// <summary>Resposta do grafico de vendas diarias de um mes.</summary>
+public sealed record VendasDiariasResponse(
+    int Ano,
+    int Mes,
+    int DiasNoMes,
+    decimal TotalPeca,
+    decimal TotalServico,
+    IReadOnlyList<VendaDiaDto> Dias);
