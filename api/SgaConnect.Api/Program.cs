@@ -73,7 +73,31 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
     p.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin())); // ajustar origem na etapa do app
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    // Botao "Authorize" no Swagger: cole o token (sem a palavra "Bearer", o Swagger adiciona).
+    var esquema = new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Description = "Cole aqui o token recebido no /auth/login (so o token, sem 'Bearer ')."
+    };
+    c.AddSecurityDefinition("Bearer", esquema);
+    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        [new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+        {
+            Reference = new Microsoft.OpenApi.Models.OpenApiReference
+            {
+                Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                Id = "Bearer"
+            }
+        }] = Array.Empty<string>()
+    });
+});
 
 var app = builder.Build();
 
