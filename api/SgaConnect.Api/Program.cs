@@ -140,6 +140,24 @@ app.MapGet("/diagnostico/conexoes", (DescobridorEmpresas descobridor) =>
     return Results.Ok(resultado);
 });
 
+// Diagnostico TEMPORARIO: calibra o criterio de "a pagar do mes" comparando varias
+// somas/contagens da CTPAG com o valor que o SGA mostra. Usa a empresa do token.
+app.MapGet("/diagnostico/contas-pagar", (HttpContext ctx, DescobridorEmpresas descobridor) =>
+{
+    var empresaChave = ctx.User.FindFirst("empresa")?.Value;
+    var codEmpresaStr = ctx.User.FindFirst("codEmpresa")?.Value;
+    if (string.IsNullOrWhiteSpace(empresaChave) || !int.TryParse(codEmpresaStr, out var codEmpresa))
+        return Results.Unauthorized();
+
+    var empresa = descobridor.Resolver(empresaChave);
+    if (empresa is null) return Results.NotFound(new { erro = "Empresa nao encontrada." });
+    if (!OperatingSystem.IsWindows())
+        return Results.Json(new { erro = "Access so no Windows." }, statusCode: 503);
+
+    var repo = new RepositorioResumo(new LeitorSga(empresa.CaminhoBanco));
+    return Results.Ok(repo.DiagnosticoContasPagar(codEmpresa));
+}).RequireAuthorization();
+
 // Diagnostico CRU: mostra o que a API enxerga no disco (pasta raiz, subpastas e arquivos).
 // Serve para entender por que um banco nao e achado. So em Development.
 app.MapGet("/diagnostico/pastas", (IOptions<SgaOptions> opt) =>

@@ -79,6 +79,60 @@ public sealed class RepositorioResumo
         return _leitor.EscalarDecimal(sql, codEmpresa, inicio, fim);
     }
 
+    /// <summary>
+    /// Diagnostico TEMPORARIO da CTPAG: ajuda a calibrar o criterio de "a pagar do mes".
+    /// Mostra, para a empresa, no mes corrente, varias somas/contagens para comparar com o SGA.
+    /// </summary>
+    public object DiagnosticoContasPagar(int codEmpresa)
+    {
+        var (inicio, fim) = MesCorrente();
+
+        int QtdTodos = _leitor.EscalarInt(
+            "SELECT COUNT(*) FROM CTPAG WHERE CodigoEmpresa = ? AND Vencimento >= ? AND Vencimento < ?",
+            codEmpresa, inicio, fim);
+
+        int QtdEmAbertoNaoZero = _leitor.EscalarInt(
+            "SELECT COUNT(*) FROM CTPAG WHERE CodigoEmpresa = ? AND EmAberto <> 0 AND Vencimento >= ? AND Vencimento < ?",
+            codEmpresa, inicio, fim);
+
+        int QtdEmAbertoMenos1 = _leitor.EscalarInt(
+            "SELECT COUNT(*) FROM CTPAG WHERE CodigoEmpresa = ? AND EmAberto = -1 AND Vencimento >= ? AND Vencimento < ?",
+            codEmpresa, inicio, fim);
+
+        int QtdEmAberto1 = _leitor.EscalarInt(
+            "SELECT COUNT(*) FROM CTPAG WHERE CodigoEmpresa = ? AND EmAberto = 1 AND Vencimento >= ? AND Vencimento < ?",
+            codEmpresa, inicio, fim);
+
+        decimal SomaValorTodos = _leitor.EscalarDecimal(
+            "SELECT SUM(Valor) FROM CTPAG WHERE CodigoEmpresa = ? AND Vencimento >= ? AND Vencimento < ?",
+            codEmpresa, inicio, fim);
+
+        decimal SomaValorEmAbertoNaoZero = _leitor.EscalarDecimal(
+            "SELECT SUM(Valor) FROM CTPAG WHERE CodigoEmpresa = ? AND EmAberto <> 0 AND Vencimento >= ? AND Vencimento < ?",
+            codEmpresa, inicio, fim);
+
+        decimal SomaValorEmAbertoMenos1 = _leitor.EscalarDecimal(
+            "SELECT SUM(Valor) FROM CTPAG WHERE CodigoEmpresa = ? AND EmAberto = -1 AND Vencimento >= ? AND Vencimento < ?",
+            codEmpresa, inicio, fim);
+
+        decimal SomaSaldoEmAbertoNaoZero = _leitor.EscalarDecimal(
+            "SELECT SUM(Valor - IIF(IsNull(TotalPago),0,TotalPago)) FROM CTPAG WHERE CodigoEmpresa = ? AND EmAberto <> 0 AND Vencimento >= ? AND Vencimento < ?",
+            codEmpresa, inicio, fim);
+
+        decimal SomaSaldoTodos = _leitor.EscalarDecimal(
+            "SELECT SUM(Valor - IIF(IsNull(TotalPago),0,TotalPago)) FROM CTPAG WHERE CodigoEmpresa = ? AND Vencimento >= ? AND Vencimento < ?",
+            codEmpresa, inicio, fim);
+
+        return new
+        {
+            mesInicio = inicio,
+            mesFim = fim,
+            contagens = new { QtdTodos, QtdEmAbertoNaoZero, QtdEmAbertoMenos1, QtdEmAberto1 },
+            somas_Valor = new { SomaValorTodos, SomaValorEmAbertoNaoZero, SomaValorEmAbertoMenos1 },
+            somas_Saldo_ValorMenosTotalPago = new { SomaSaldoEmAbertoNaoZero, SomaSaldoTodos }
+        };
+    }
+
     private static (DateTime inicio, DateTime fim) MesCorrente()
     {
         var hoje = DateTime.Today;
