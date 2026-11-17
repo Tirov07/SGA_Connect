@@ -8,7 +8,7 @@ namespace SgaConnect.Api.Sga;
 ///
 /// Fonte confirmada pelo cliente:
 ///   - OSv fechada: tabela OS, data = DataFechamento, chave da OSv = NumOs, filtra CodEmpresa.
-///   - SERVICO: ITENSSERVOSV ligada por NumOsv -> SUM(ValorMaoObra * Quantidade).
+///   - SERVICO: ITENSSERVOSV ligada por NumOs -> SUM(ValorMaoObra * Quantidade).
 ///   - PECA (cadeia de 3 tabelas):
 ///       OS.NumOs = RQM.NumOs  (RQM nao tem CodEmpresa)
 ///       RQM.NumRequisic = RMXEMPXEST.NumRequisic
@@ -41,7 +41,7 @@ public sealed class RepositorioVendas
             SELECT DAY(o.DataFechamento) AS Dia,
                    SUM(i.ValorMaoObra * i.Quantidade) AS Total
             FROM OS AS o
-            INNER JOIN ITENSSERVOSV AS i ON o.NumOs = i.NumOsv
+            INNER JOIN ITENSSERVOSV AS i ON o.NumOs = i.NumOs
             WHERE o.CodEmpresa = ?
               AND o.DataFechamento >= ? AND o.DataFechamento < ?
               AND (o.Cancelada IS NULL OR o.Cancelada = 0)
