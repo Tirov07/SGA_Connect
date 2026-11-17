@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import * as SecureStore from "expo-secure-store";
 import { api, LoginResposta, EmpresaDoUsuario } from "./api";
+import { armazenamento } from "./armazenamento";
 
 type Sessao = {
   token: string;
@@ -36,11 +36,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
-        const salvo = await SecureStore.getItemAsync(CHAVE);
+        const salvo = await armazenamento.ler(CHAVE);
         if (salvo) {
           const s = JSON.parse(salvo) as Sessao;
           if (new Date(s.expiraEm).getTime() > Date.now()) setSessao(s);
-          else await SecureStore.deleteItemAsync(CHAVE);
+          else await armazenamento.apagar(CHAVE);
         }
       } catch {
         /* ignora sessao corrompida */
@@ -73,13 +73,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       codEmpresa: r.codEmpresa,
       expiraEm: r.expiraEm,
     };
-    await SecureStore.setItemAsync(CHAVE, JSON.stringify(s));
+    await armazenamento.guardar(CHAVE, JSON.stringify(s));
     setSessao(s);
     return { tipo: "ok" };
   }
 
   async function sair() {
-    await SecureStore.deleteItemAsync(CHAVE);
+    await armazenamento.apagar(CHAVE);
     setSessao(null);
   }
 
