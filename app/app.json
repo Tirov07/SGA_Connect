@@ -23,7 +23,7 @@
       "typedRoutes": true
     },
     "extra": {
-      "_comentario": "apiUrl: no iPhone (Expo Go) use o IP da sua maquina na Wi-Fi, ex. http://192.168.0.10:5443. No emulador Android use http://10.0.2.2:5443.",
+      "_comentario": "NAO edite o apiUrl aqui para por seu IP — use um arquivo .env (EXPO_PUBLIC_API_URL), que nao vai pro git e evita conflito no pull. Veja app/.env.example. Este valor e so o fallback do emulador Android.",
       "apiUrl": "http://10.0.2.2:5443"
     }
   }
