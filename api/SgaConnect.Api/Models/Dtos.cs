@@ -2,7 +2,9 @@ namespace SgaConnect.Api.Models;
 
 public sealed record LoginRequest(string Login, string Senha);
 
-public sealed record LoginResponse(string Token, DateTime ExpiraEm, string Nome, string Empresa);
+public sealed record LoginRequestEmpresa(string Login, string Senha, string? Empresa);
+
+public sealed record LoginResponse(string Token, DateTime ExpiraEm, string Nome, string Empresa, int CodEmpresa);
 
 /// <summary>Resumo da home do app — primeiros numeros que o cliente ve.</summary>
 public sealed record ResumoResponse(

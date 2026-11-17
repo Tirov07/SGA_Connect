@@ -15,10 +15,6 @@
     <PackageReference Include="System.Data.OleDb" Version="8.0.0" />
     <!-- Autenticação JWT -->
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.11" />
-    <!-- Hash de senha (mesmo algoritmo do ASP.NET Identity) -->
-    <PackageReference Include="Microsoft.AspNetCore.Cryptography.KeyDerivation" Version="8.0.11" />
-    <!-- Banco próprio do app (usuários/acesso), separado do SGA -->
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.11" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" />
   </ItemGroup>
 

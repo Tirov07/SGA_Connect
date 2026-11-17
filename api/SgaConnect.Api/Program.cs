@@ -34,13 +34,6 @@ var jwtOpts = jwtSection.Get<JwtOptions>()!;
 // ---- Servicos ----
 builder.Services.AddSingleton<DescobridorEmpresas>();
 builder.Services.AddSingleton<ServicoJwt>();
-builder.Services.AddSingleton(_ =>
-{
-    var caminho = builder.Configuration["AppDb:Caminho"] ?? "sgaconnect_app.db";
-    var repo = new RepositorioUsuarios(caminho);
-    repo.GarantirEsquema();
-    return repo;
-});
 
 // ---- Autenticacao JWT ----
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -83,15 +76,8 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Semente de dev: se nao ha nenhum usuario, cria um de teste (so em Development).
 if (app.Environment.IsDevelopment())
 {
-    var repo = app.Services.GetRequiredService<RepositorioUsuarios>();
-    if (repo.Contar() == 0)
-    {
-        repo.Salvar("teste", "teste123", empresaChave: "FULLTAC", nome: "Usuario Teste");
-        app.Logger.LogInformation("Usuario de teste criado: login='teste' senha='teste123' empresa='FULLTAC' (apenas Development).");
-    }
     app.UseSwagger();
     app.UseSwaggerUI();
 }
@@ -129,41 +115,61 @@ app.MapGet("/diagnostico/conexoes", (DescobridorEmpresas descobridor) =>
     return Results.Ok(resultado);
 });
 
-// Login: valida no banco proprio do app e devolve JWT. A empresa vai no token.
-app.MapPost("/auth/login", (LoginRequest req, RepositorioUsuarios repo, ServicoJwt jwt) =>
-{
-    if (string.IsNullOrWhiteSpace(req.Login) || string.IsNullOrWhiteSpace(req.Senha))
-        return Results.BadRequest(new { erro = "Informe login e senha." });
+// Lista as empresas disponiveis para a tela de login escolher (so chave + nome da pasta).
+app.MapGet("/auth/empresas", (DescobridorEmpresas descobridor) =>
+    Results.Ok(descobridor.Listar()
+        .Where(e => e.BancoExiste)
+        .Select(e => new EmpresaResumo(e.Chave, e.NomePasta, e.BancoExiste))));
 
-    var usuario = repo.BuscarPorLogin(req.Login);
-    // Mesma resposta para usuario inexistente e senha errada (nao revela qual falhou).
-    if (usuario is null || !usuario.Ativo || !HashSenha.Conferir(req.Senha, usuario.HashSenha))
+// Login: o usuario informa login + senha + a empresa (chave da pasta). Validamos a senha
+// contra a EmpresaxUsuariosConn daquele DADOSTAB (somente leitura). A empresa escolhida e
+// "selada" no JWT; dai em diante o app nunca mais informa empresa nos requests de dados.
+app.MapPost("/auth/login", (LoginRequestEmpresa req, DescobridorEmpresas descobridor, ServicoJwt jwt) =>
+{
+    if (string.IsNullOrWhiteSpace(req.Login) || string.IsNullOrWhiteSpace(req.Senha) || string.IsNullOrWhiteSpace(req.Empresa))
+        return Results.BadRequest(new { erro = "Informe empresa, login e senha." });
+
+    if (!OperatingSystem.IsWindows())
+        return Results.Json(new { erro = "Leitura do SGA (Access) so no Windows." }, statusCode: StatusCodes.Status503ServiceUnavailable);
+
+    var empresa = descobridor.Resolver(req.Empresa);
+    if (empresa is null)
         return Results.Json(new { erro = "Login ou senha invalidos." }, statusCode: StatusCodes.Status401Unauthorized);
 
-    var (token, expira) = jwt.Gerar(usuario);
-    return Results.Ok(new LoginResponse(token, expira, usuario.Nome, usuario.EmpresaChave));
+    var leitor = new LeitorSga(empresa.CaminhoBanco);
+    var usuario = new RepositorioLoginSga().Autenticar(leitor, req.Login, req.Senha);
+    // Mesma resposta para usuario inexistente e senha errada (nao revela qual falhou).
+    if (usuario is null)
+        return Results.Json(new { erro = "Login ou senha invalidos." }, statusCode: StatusCodes.Status401Unauthorized);
+
+    var (token, expira) = jwt.Gerar(usuario.Cpf, usuario.Nome, empresa.Chave, usuario.CodEmpresa);
+    return Results.Ok(new LoginResponse(token, expira, usuario.Nome, empresa.Chave, usuario.CodEmpresa));
 }).RequireRateLimiting("login");
 
-// Resumo da home — ESQUELETO. A empresa vem do token (claim "empresa"), nunca do app.
-// As consultas reais ao SGA entram na proxima etapa, quando mapearmos as tabelas.
+// Resumo da home — le OS + financeiro do DADOSTAB (somente leitura). A empresa e o
+// CodEmpresa vem do token, nunca do app.
 app.MapGet("/resumo", (HttpContext ctx, DescobridorEmpresas descobridor) =>
 {
     var empresaChave = ctx.User.FindFirst("empresa")?.Value;
-    if (string.IsNullOrWhiteSpace(empresaChave))
+    var codEmpresaStr = ctx.User.FindFirst("codEmpresa")?.Value;
+    if (string.IsNullOrWhiteSpace(empresaChave) || !int.TryParse(codEmpresaStr, out var codEmpresa))
         return Results.Unauthorized();
 
     var empresa = descobridor.Resolver(empresaChave);
     if (empresa is null)
         return Results.NotFound(new { erro = $"Empresa '{empresaChave}' nao encontrada ou banco ausente no servidor." });
 
-    // TODO(proxima etapa): ler OS/financeiro do DADOSTAB via AcessoBancoSga (somente leitura).
+    if (!OperatingSystem.IsWindows())
+        return Results.Json(new { erro = "Leitura do SGA (Access) so no Windows." }, statusCode: StatusCodes.Status503ServiceUnavailable);
+
+    var repo = new RepositorioResumo(new LeitorSga(empresa.CaminhoBanco));
     var resumo = new ResumoResponse(
         Empresa: empresa.Chave,
         GeradoEm: DateTime.Now,
-        OrdensServicoAbertas: 0,
-        OrdensServicoFechadas7Dias: 0,
-        TotalAReceberMes: 0m,
-        TotalAPagarMes: 0m);
+        OrdensServicoAbertas: repo.OrdensServicoAbertas(codEmpresa),
+        OrdensServicoFechadas7Dias: repo.OrdensServicoFechadasUltimosDias(codEmpresa, 7),
+        TotalAReceberMes: repo.TotalAReceberMes(codEmpresa),
+        TotalAPagarMes: repo.TotalAPagarMes(codEmpresa));
 
     return Results.Ok(resumo);
 }).RequireAuthorization();
