@@ -13,7 +13,13 @@ public sealed class ServicoJwt
 
     public ServicoJwt(IOptions<JwtOptions> opcoes) => _opcoes = opcoes.Value;
 
-    public (string token, DateTime expiraEm) Gerar(UsuarioApp usuario)
+    /// <summary>
+    /// Gera o JWT. A empresa (chave da pasta) e o CodEmpresa (numero do SGA) viajam no
+    /// token e sao sempre resolvidos no servidor — o app NUNCA informa empresa nem caminho,
+    /// o que garante o isolamento entre clientes.
+    /// </summary>
+    /// <param name="codEmpresa">CodEmpresa do SGA; 0 quando a origem e o banco do app.</param>
+    public (string token, DateTime expiraEm) Gerar(string login, string nome, string empresaChave, int codEmpresa)
     {
         var chave = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_opcoes.Key));
         var credenciais = new SigningCredentials(chave, SecurityAlgorithms.HmacSha256);
@@ -21,12 +27,11 @@ public sealed class ServicoJwt
 
         var claims = new List<Claim>
         {
-            new(JwtRegisteredClaimNames.Sub, usuario.Id.ToString()),
-            new("login", usuario.Login),
-            // A empresa do usuario viaja no token. O app NUNCA informa a empresa;
-            // ela e sempre lida daqui no servidor, garantindo o isolamento entre clientes.
-            new("empresa", usuario.EmpresaChave),
-            new("nome", usuario.Nome),
+            new(JwtRegisteredClaimNames.Sub, login),
+            new("login", login),
+            new("empresa", empresaChave),
+            new("codEmpresa", codEmpresa.ToString()),
+            new("nome", nome),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 

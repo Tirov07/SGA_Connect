@@ -36,11 +36,24 @@ reiniciar nem editar config.
 |---|---|---|---|
 | GET | `/health` | não | Status + empresas encontradas |
 | GET | `/diagnostico/conexoes` | não (dev) | Testa abrir o `DADOSTAB` de cada empresa |
-| POST | `/auth/login` | não (rate-limited) | Valida login/senha, devolve JWT |
-| GET | `/resumo` | **sim (JWT)** | Esqueleto da home; empresa vem do token |
+| GET | `/auth/empresas` | não | Lista as empresas para a tela de login |
+| POST | `/auth/login` | não (rate-limited) | Valida contra `EmpresaxUsuariosConn`, devolve JWT |
+| GET | `/resumo` | **sim (JWT)** | OS abertas/fechadas + a receber do mês |
 
-Em Development, se não houver usuários, a API cria um de teste:
-`login=teste senha=teste123 empresa=FULLTAC`.
+## Login
+
+O cliente informa **empresa + login + senha**. A senha é validada contra a tabela
+`EmpresaxUsuariosConn` do `DADOSTAB` daquela empresa (somente leitura). A empresa
+escolhida é selada no JWT (claims `empresa` e `codEmpresa`); daí em diante o app nunca
+mais informa a empresa — todo request de dados é resolvido pelo token no servidor.
+
+Request de login:
+```json
+{ "login": "<CPF>", "senha": "<senha>", "empresa": "FULLTAC" }
+```
+
+> A confirmar com o cliente: campo de login (`CPF` ou `Nome`) e se `Password_Usu` está
+> em texto puro. O código usa `CPF` + `Password_Usu` como hipótese atual.
 
 ## Rodar
 
