@@ -73,28 +73,44 @@ public sealed class DescobridorEmpresas
     }
 
     /// <summary>
-    /// Acha o DADOSTAB.accdb de uma pasta de empresa, tolerante ao layout:
-    ///   1) o caminho relativo configurado (ex.: bd\DADOSTAB.accdb);
-    ///   2) o arquivo solto na raiz da pasta (ex.: fulltac\DADOSTAB.accdb);
-    ///   3) qualquer DADOSTAB.accdb ate 2 niveis abaixo (fallback).
-    /// Retorna null se nao encontrar.
+    /// Acha o banco Access de uma pasta de empresa, tolerante a nome/extensao/layout:
+    ///   1) o caminho relativo configurado (ex.: bd\DADOSTAB.accdb), se existir;
+    ///   2) um arquivo DADOSTAB.accdb ou DADOSTAB.mdb (raiz ou ate 2 niveis abaixo);
+    ///   3) como ultimo recurso, o primeiro .accdb/.mdb encontrado na pasta.
+    /// Retorna null se nao encontrar nenhum banco Access.
     /// </summary>
     private string? ResolverCaminhoBanco(string pastaEmpresa)
     {
+        // 1) Caminho relativo configurado (ex.: bd\DADOSTAB.accdb)
         var relativo = Path.Combine(pastaEmpresa, _opcoes.CaminhoRelativoBanco);
         if (File.Exists(relativo)) return relativo;
 
-        var naRaiz = Path.Combine(pastaEmpresa, "DADOSTAB.accdb");
-        if (File.Exists(naRaiz)) return naRaiz;
-
         try
         {
-            foreach (var achado in Directory.EnumerateFiles(pastaEmpresa, "DADOSTAB.accdb", SearchOption.AllDirectories))
-                return achado; // primeiro encontrado
+            // Lista todos os bancos Access da pasta (recursivo). O nome do arquivo no SGA
+            // pode variar de caixa (ex.: "DadosTab.accdb"), entao casamos sem diferenciar
+            // maiusculas/minusculas em vez de depender do padrao do EnumerateFiles.
+            var bancos = new[] { "*.accdb", "*.mdb" }
+                .SelectMany(p => Directory.EnumerateFiles(pastaEmpresa, p, SearchOption.AllDirectories))
+                .ToList();
+
+            // 2) Prioriza um arquivo chamado "DADOSTAB" (qualquer caixa, .accdb ou .mdb).
+            var dadostab = bancos.FirstOrDefault(f =>
+                string.Equals(Path.GetFileNameWithoutExtension(f), "DADOSTAB", StringComparison.OrdinalIgnoreCase));
+            if (dadostab is not null) return dadostab;
+
+            // 3) Fallback: o primeiro banco Access encontrado na pasta.
+            var primeiro = bancos.FirstOrDefault();
+            if (primeiro is not null)
+            {
+                _log.LogInformation("Empresa em {Pasta}: usando banco {Arquivo} (nenhum DADOSTAB encontrado pelo nome).",
+                    pastaEmpresa, Path.GetFileName(primeiro));
+                return primeiro;
+            }
         }
         catch (Exception ex)
         {
-            _log.LogWarning(ex, "Falha ao varrer {Pasta} por DADOSTAB.accdb", pastaEmpresa);
+            _log.LogWarning(ex, "Falha ao varrer {Pasta} por banco Access", pastaEmpresa);
         }
         return null;
     }
