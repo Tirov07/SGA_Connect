@@ -35,33 +35,68 @@ public sealed class DescobridorEmpresas
             return Array.Empty<EmpresaInfo>();
         }
 
-        var prefixo = _opcoes.PrefixoPastaEmpresa;
+        // Prefixo OPCIONAL: se vazio, toda subpasta e candidata (util em teste, onde as
+        // pastas sao "fulltac"/"ideal"); em producao, "SGA_" filtra so as pastas do SGA.
+        var prefixo = _opcoes.PrefixoPastaEmpresa ?? "";
         var lista = new List<EmpresaInfo>();
 
         foreach (var pasta in Directory.EnumerateDirectories(raiz))
         {
             var nomePasta = Path.GetFileName(pasta);
             if (string.IsNullOrEmpty(nomePasta)) continue;
-            if (!nomePasta.StartsWith(prefixo, StringComparison.OrdinalIgnoreCase)) continue;
+            if (prefixo.Length > 0 && !nomePasta.StartsWith(prefixo, StringComparison.OrdinalIgnoreCase))
+                continue;
 
-            var caminhoBanco = Path.Combine(pasta, _opcoes.CaminhoRelativoBanco);
-            var existe = File.Exists(caminhoBanco);
+            var caminhoBanco = ResolverCaminhoBanco(pasta);
+            var existe = caminhoBanco is not null;
+
+            // Chave = nome da pasta sem o prefixo (quando ha prefixo). Ex.: SGA_FULLTAC -> FULLTAC; fulltac -> fulltac.
+            var chave = prefixo.Length > 0 && nomePasta.StartsWith(prefixo, StringComparison.OrdinalIgnoreCase)
+                ? nomePasta[prefixo.Length..].Trim()
+                : nomePasta.Trim();
 
             lista.Add(new EmpresaInfo
             {
-                Chave = nomePasta[prefixo.Length..].Trim(),
+                Chave = chave,
                 NomePasta = nomePasta,
-                CaminhoBanco = caminhoBanco,
+                CaminhoBanco = caminhoBanco ?? Path.Combine(pasta, _opcoes.CaminhoRelativoBanco),
                 BancoExiste = existe
             });
 
             if (!existe)
-                _log.LogWarning("Empresa {Pasta}: DADOSTAB.accdb nao encontrado em {Caminho}", nomePasta, caminhoBanco);
+                _log.LogWarning("Empresa {Pasta}: DADOSTAB.accdb nao encontrado em {Pasta}", nomePasta, pasta);
         }
 
         return lista
             .OrderBy(e => e.Chave, StringComparer.OrdinalIgnoreCase)
             .ToList();
+    }
+
+    /// <summary>
+    /// Acha o DADOSTAB.accdb de uma pasta de empresa, tolerante ao layout:
+    ///   1) o caminho relativo configurado (ex.: bd\DADOSTAB.accdb);
+    ///   2) o arquivo solto na raiz da pasta (ex.: fulltac\DADOSTAB.accdb);
+    ///   3) qualquer DADOSTAB.accdb ate 2 niveis abaixo (fallback).
+    /// Retorna null se nao encontrar.
+    /// </summary>
+    private string? ResolverCaminhoBanco(string pastaEmpresa)
+    {
+        var relativo = Path.Combine(pastaEmpresa, _opcoes.CaminhoRelativoBanco);
+        if (File.Exists(relativo)) return relativo;
+
+        var naRaiz = Path.Combine(pastaEmpresa, "DADOSTAB.accdb");
+        if (File.Exists(naRaiz)) return naRaiz;
+
+        try
+        {
+            foreach (var achado in Directory.EnumerateFiles(pastaEmpresa, "DADOSTAB.accdb", SearchOption.AllDirectories))
+                return achado; // primeiro encontrado
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "Falha ao varrer {Pasta} por DADOSTAB.accdb", pastaEmpresa);
+        }
+        return null;
     }
 
     /// <summary>
