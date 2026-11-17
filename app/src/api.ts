@@ -1,13 +1,15 @@
 import { API_URL } from "./config";
 
-export type Empresa = { chave: string; nomePasta: string; bancoExiste: boolean };
+export type EmpresaDoUsuario = { empresa: string; nome: string; codEmpresa: number };
 
 export type LoginResposta = {
-  token: string;
-  expiraEm: string;
-  nome: string;
-  empresa: string;
-  codEmpresa: number;
+  token: string | null;
+  expiraEm: string | null;
+  nome: string | null;
+  empresa: string | null;
+  codEmpresa: number | null;
+  precisaEscolherEmpresa: boolean;
+  empresas: EmpresaDoUsuario[] | null;
 };
 
 export type Resumo = {
@@ -38,16 +40,16 @@ async function tratar(resp: Response) {
 }
 
 export const api = {
-  async listarEmpresas(): Promise<Empresa[]> {
-    const resp = await fetch(`${API_URL}/auth/empresas`);
-    return tratar(resp);
-  },
-
-  async login(login: string, senha: string, empresa: string): Promise<LoginResposta> {
+  /**
+   * Login com CPF + senha. Na 1a chamada, nao envia empresa: se o CPF existir em varias,
+   * a resposta vem com precisaEscolherEmpresa=true e a lista. Aí chamamos de novo passando
+   * a empresa escolhida.
+   */
+  async login(login: string, senha: string, empresa?: string): Promise<LoginResposta> {
     const resp = await fetch(`${API_URL}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ login, senha, empresa }),
+      body: JSON.stringify({ login, senha, empresa: empresa ?? null }),
     });
     return tratar(resp);
   },

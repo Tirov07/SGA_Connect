@@ -1,10 +1,27 @@
 namespace SgaConnect.Api.Models;
 
-public sealed record LoginRequest(string Login, string Senha);
+/// <summary>
+/// Login: o app envia so CPF + senha. A empresa e opcional — vem preenchida apenas na
+/// 2a chamada, quando o CPF existe em varias empresas e o usuario ja escolheu uma.
+/// </summary>
+public sealed record LoginRequest(string Login, string Senha, string? Empresa = null);
 
-public sealed record LoginRequestEmpresa(string Login, string Senha, string? Empresa);
+/// <summary>Uma empresa onde o CPF+senha foram aceitos (para o usuario escolher).</summary>
+public sealed record EmpresaDoUsuario(string Empresa, string Nome, int CodEmpresa);
 
-public sealed record LoginResponse(string Token, DateTime ExpiraEm, string Nome, string Empresa, int CodEmpresa);
+/// <summary>
+/// Resposta do login. Dois formatos, nunca os dois ao mesmo tempo:
+///  - sucesso: Token preenchido (login resolvido numa unica empresa);
+///  - escolha: PrecisaEscolherEmpresa=true + Empresas (CPF existe em varias).
+/// </summary>
+public sealed record LoginResponse(
+    string? Token,
+    DateTime? ExpiraEm,
+    string? Nome,
+    string? Empresa,
+    int? CodEmpresa,
+    bool PrecisaEscolherEmpresa,
+    IReadOnlyList<EmpresaDoUsuario>? Empresas);
 
 /// <summary>Resumo da home do app — primeiros numeros que o cliente ve.</summary>
 public sealed record ResumoResponse(
