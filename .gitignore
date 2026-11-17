@@ -1,0 +1,33 @@
+# ---- Segredos / config local (NUNCA comitar) ----
+appsettings.Local.json
+appsettings.*.Local.json
+*.env
+.env
+.env.*
+
+# ---- Banco proprio do app ----
+*.db
+*.db-shm
+*.db-wal
+
+# ---- .NET ----
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+# ---- Node / React Native (app/) ----
+node_modules/
+.expo/
+dist/
+web-build/
+*.log
+npm-debug.*
+yarn-error.*
+
+# ---- SO / editores ----
+.DS_Store
+Thumbs.db
+.idea/
+*.swp

@@ -1,0 +1,11 @@
+{
+  "_leia_me": "Copie este arquivo para 'appsettings.Local.json' (que esta no .gitignore) e preencha os segredos. NUNCA comite o appsettings.Local.json.",
+
+  "Sga": {
+    "PastaRaiz": "D:\\Testes\\sga"
+  },
+
+  "Jwt": {
+    "Key": "troque-por-uma-chave-longa-e-aleatoria-de-pelo-menos-32-caracteres"
+  }
+}
