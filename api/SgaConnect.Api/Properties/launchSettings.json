@@ -10,6 +10,16 @@
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
+    },
+    "dispositivo": {
+      "_comentario": "Use este perfil para testar no celular: ouve em 0.0.0.0 (todas as interfaces) na porta 5443 (HTTP). Rode: dotnet run --project SgaConnect.Api --launch-profile dispositivo",
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": false,
+      "applicationUrl": "http://0.0.0.0:5443",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
     }
   }
 }
