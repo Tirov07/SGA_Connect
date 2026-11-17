@@ -169,7 +169,7 @@ app.MapGet("/resumo", (HttpContext ctx, DescobridorEmpresas descobridor) =>
         OrdensServicoAbertas: repo.OrdensServicoAbertas(codEmpresa),
         OrdensServicoFechadas7Dias: repo.OrdensServicoFechadasUltimosDias(codEmpresa, 7),
         TotalAReceberMes: repo.TotalAReceberMes(codEmpresa),
-        TotalAPagarMes: 0m); // CTPAG/LIQCTPAG entram quando o cliente enviar a estrutura.
+        TotalAPagarMes: repo.TotalAPagarMes(codEmpresa));
 
     return Results.Ok(resumo);
 }).RequireAuthorization();

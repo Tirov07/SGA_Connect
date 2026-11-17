@@ -4,11 +4,15 @@ namespace SgaConnect.Api.Sga;
 
 /// <summary>
 /// Consultas do resumo (home do app) no DADOSTAB de uma empresa, SOMENTE LEITURA.
-/// Todas filtram por CodEmpresa (multi-empresa no mesmo banco) via parametro.
+/// Todas filtram por empresa (multi-empresa no mesmo banco) via parametro.
 ///
-/// A CONFIRMAR com o cliente (ver // CONFIRMAR):
-///   - OS aberta vs. fechada: por DataFechamento vazia/preenchida (hipotese) ou por STATUS?
-///   - Ignorar OS/titulos com Cancelada/EmAberto conforme regra real.
+/// ATENCAO aos nomes de coluna, que diferem entre as tabelas:
+///   - CTREC  (a receber): empresa = CodEmpresa    ; vencimento = DataVencimento
+///   - CTPAG  (a pagar)   : empresa = CodigoEmpresa ; vencimento = Vencimento
+///
+/// Regras confirmadas pelo cliente:
+///   - OS aberta = DataFechamento vazia; fechada = DataFechamento preenchida.
+///   - Ignorar OS canceladas nas contagens.
 /// </summary>
 [SupportedOSPlatform("windows")]
 public sealed class RepositorioResumo
@@ -17,7 +21,7 @@ public sealed class RepositorioResumo
 
     public RepositorioResumo(LeitorSga leitor) => _leitor = leitor;
 
-    /// <summary>OS em aberto = sem DataFechamento e nao cancelada. // CONFIRMAR regra de STATUS.</summary>
+    /// <summary>OS em aberto = sem DataFechamento e nao cancelada.</summary>
     public int OrdensServicoAbertas(int codEmpresa)
     {
         const string sql = """
@@ -44,8 +48,8 @@ public sealed class RepositorioResumo
     }
 
     /// <summary>
-    /// Total a receber no mes corrente: titulos da CTREC em aberto com vencimento no mes.
-    /// EmAberto no SGA e Sim/Nao -> no Access TRUE = -1. // CONFIRMAR semantica EmAberto.
+    /// Total a RECEBER no mes corrente: titulos da CTREC em aberto com vencimento no mes.
+    /// EmAberto no SGA e Sim/Nao -> no Access TRUE = -1 (por isso EmAberto &lt;&gt; 0).
     /// </summary>
     public decimal TotalAReceberMes(int codEmpresa)
     {
@@ -55,6 +59,22 @@ public sealed class RepositorioResumo
             WHERE CodEmpresa = ?
               AND EmAberto <> 0
               AND DataVencimento >= ? AND DataVencimento < ?
+            """;
+        return _leitor.EscalarDecimal(sql, codEmpresa, inicio, fim);
+    }
+
+    /// <summary>
+    /// Total a PAGAR no mes corrente: titulos da CTPAG em aberto com vencimento no mes.
+    /// Nomes proprios da CTPAG: empresa = CodigoEmpresa, vencimento = Vencimento.
+    /// </summary>
+    public decimal TotalAPagarMes(int codEmpresa)
+    {
+        var (inicio, fim) = MesCorrente();
+        const string sql = """
+            SELECT SUM(Valor) FROM CTPAG
+            WHERE CodigoEmpresa = ?
+              AND EmAberto <> 0
+              AND Vencimento >= ? AND Vencimento < ?
             """;
         return _leitor.EscalarDecimal(sql, codEmpresa, inicio, fim);
     }

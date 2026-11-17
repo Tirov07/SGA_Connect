@@ -52,8 +52,8 @@ Request de login:
 { "login": "<CPF>", "senha": "<senha>", "empresa": "FULLTAC" }
 ```
 
-> A confirmar com o cliente: campo de login (`CPF` ou `Nome`) e se `Password_Usu` está
-> em texto puro. O código usa `CPF` + `Password_Usu` como hipótese atual.
+O login é o **CPF** e a `Password_Usu` é texto puro (confirmado). A senha nunca sai da
+API: a comparação acontece no servidor e a senha não volta em nenhuma resposta.
 
 ## Rodar
 
@@ -70,7 +70,15 @@ dotnet run --project SgaConnect.Api
 - Senhas com PBKDF2; mesma mensagem para login/senha inválidos; rate limiting no login.
 - Segredos fora do git.
 
+## Regras de negócio confirmadas
+
+- **OS aberta** = `DataFechamento` vazia; **fechada** = preenchida. Canceladas ignoradas.
+- **A receber** (`CTREC`): empresa = `CodEmpresa`, vencimento = `DataVencimento`.
+- **A pagar** (`CTPAG`): empresa = `CodigoEmpresa`, vencimento = `Vencimento` (nomes
+  diferentes da CTREC — cuidado ao copiar queries).
+
 ## Próximos passos
 
-- Ligar o login na tabela de usuários do SGA (a confirmar: `EmpresaxUsuariosConn`).
-- Implementar as consultas reais (`/resumo`, OS, notas, financeiro, estoque).
+- Telas de detalhe: últimos recebimentos (`PGCTREC`) e pagamentos (`LIQCTPAG`),
+  títulos a vencer em 30 dias, notas emitidas, estoque.
+- App React Native (Expo).

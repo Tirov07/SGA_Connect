@@ -9,9 +9,7 @@ namespace SgaConnect.Api.Sga;
 ///   CodEmpresa (Numero), CPF (Texto), Nome (Texto), Password_Usu (Texto),
 ///   Celular (Texto), Email (Texto), Ativo (Numero).
 ///
-/// A CONFIRMAR com o cliente:
-///   - Campo de login que o cliente digita: CPF (hipotese) ou Nome?
-///   - Password_Usu em texto puro (hipotese)?
+/// Confirmado pelo cliente: o login e o CPF e a Password_Usu e texto puro.
 ///
 /// Seguranca: a senha nunca sai da API; comparamos no servidor e nunca a retornamos.
 /// </summary>
@@ -21,8 +19,7 @@ public sealed class RepositorioLoginSga
     public sealed record UsuarioSga(int CodEmpresa, string Cpf, string Nome);
 
     /// <summary>
-    /// Procura um usuario ATIVO cujo login e senha batem. Retorna null se nao achar.
-    /// O login e comparado contra CPF (hipotese atual).
+    /// Procura um usuario ATIVO cujo CPF e senha batem. Retorna null se nao achar.
     /// </summary>
     public UsuarioSga? Autenticar(LeitorSga leitor, string login, string senha)
     {
