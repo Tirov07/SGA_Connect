@@ -8,11 +8,13 @@ namespace SgaConnect.Api.Sga;
 ///
 /// Fonte confirmada pelo cliente:
 ///   - OSv fechada: tabela OS, data = DataFechamento, chave da OSv = NumOs, filtra CodEmpresa.
-///   - SERVICO: ITENSSERVOSV ligada por NumOsv -> SUM(ValorMaoObra * Quantidade).
+///   - SERVICO: ITENSSERVOSV ligada por NumOs -> SUM(ValorMaoObra * Quantidade).
 ///   - PECA (cadeia de 3 tabelas):
 ///       OS.NumOs = RQM.NumOs  (RQM nao tem CodEmpresa)
-///       RQM.NumRequisic = RMXEMPXEST.NumRequisic
+///       RQM.NumRequisicao = RMXEMPXEST.NumRequisicao
 ///       SUM(RMXEMPXEST.Quantidade * RMXEMPXEST.ValorUnit), filtra CodEmpresa em RMXEMPXEST.
+/// OBS: RMXEMPXEST tambem tem um campo Numos proprio (caminho direto possivel), mas
+/// seguimos o caminho via RQM que o cliente validou conhecendo o sistema.
 ///
 /// OBS de nomes (confirmar no banco real): a chave da OSv na tabela OS e NumOs; na
 /// ITENSSERVOSV e NumOsv; na RQM e NumOs. Se a OS usar NumOsv, trocar OS_CHAVE abaixo.
@@ -41,7 +43,7 @@ public sealed class RepositorioVendas
             SELECT DAY(o.DataFechamento) AS Dia,
                    SUM(i.ValorMaoObra * i.Quantidade) AS Total
             FROM OS AS o
-            INNER JOIN ITENSSERVOSV AS i ON o.NumOs = i.NumOsv
+            INNER JOIN ITENSSERVOSV AS i ON o.NumOs = i.NumOs
             WHERE o.CodEmpresa = ?
               AND o.DataFechamento >= ? AND o.DataFechamento < ?
               AND (o.Cancelada IS NULL OR o.Cancelada = 0)
@@ -55,7 +57,7 @@ public sealed class RepositorioVendas
                    SUM(x.Quantidade * x.ValorUnit) AS Total
             FROM ((OS AS o
                   INNER JOIN RQM AS q ON o.NumOs = q.NumOs)
-                  INNER JOIN RMXEMPXEST AS x ON q.NumRequisic = x.NumRequisic)
+                  INNER JOIN RMXEMPXEST AS x ON q.NumRequisicao = x.NumRequisicao)
             WHERE o.CodEmpresa = ?
               AND x.CodEmpresa = ?
               AND o.DataFechamento >= ? AND o.DataFechamento < ?
