@@ -21,13 +21,16 @@ public static class AcessoBancoSga
     [SupportedOSPlatform("windows")]
     public static string MontarConnectionString(string caminhoAccdb)
     {
-        return new OleDbConnectionStringBuilder
+        // Monta tudo pelo builder (nada de concatenar na mao, que quebrava o formato OLE DB).
+        // Mode=Read abre somente leitura; Share Deny None nao trava o banco para outros
+        // usuarios (o SGA pode estar aberto ao mesmo tempo).
+        var builder = new OleDbConnectionStringBuilder
         {
             Provider = "Microsoft.ACE.OLEDB.12.0",
-            DataSource = caminhoAccdb,
-            // Modos de abertura/compartilhamento (somente leitura):
-            ["Mode"] = "Read",
-        }.ConnectionString + "Jet OLEDB:Database Password=;";
+            DataSource = caminhoAccdb
+        };
+        builder["Mode"] = "Read";
+        return builder.ConnectionString;
     }
 
     /// <summary>
