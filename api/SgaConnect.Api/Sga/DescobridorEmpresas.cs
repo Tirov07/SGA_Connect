@@ -35,33 +35,84 @@ public sealed class DescobridorEmpresas
             return Array.Empty<EmpresaInfo>();
         }
 
-        var prefixo = _opcoes.PrefixoPastaEmpresa;
+        // Prefixo OPCIONAL: se vazio, toda subpasta e candidata (util em teste, onde as
+        // pastas sao "fulltac"/"ideal"); em producao, "SGA_" filtra so as pastas do SGA.
+        var prefixo = _opcoes.PrefixoPastaEmpresa ?? "";
         var lista = new List<EmpresaInfo>();
 
         foreach (var pasta in Directory.EnumerateDirectories(raiz))
         {
             var nomePasta = Path.GetFileName(pasta);
             if (string.IsNullOrEmpty(nomePasta)) continue;
-            if (!nomePasta.StartsWith(prefixo, StringComparison.OrdinalIgnoreCase)) continue;
+            if (prefixo.Length > 0 && !nomePasta.StartsWith(prefixo, StringComparison.OrdinalIgnoreCase))
+                continue;
 
-            var caminhoBanco = Path.Combine(pasta, _opcoes.CaminhoRelativoBanco);
-            var existe = File.Exists(caminhoBanco);
+            var caminhoBanco = ResolverCaminhoBanco(pasta);
+            var existe = caminhoBanco is not null;
+
+            // Chave = nome da pasta sem o prefixo (quando ha prefixo). Ex.: SGA_FULLTAC -> FULLTAC; fulltac -> fulltac.
+            var chave = prefixo.Length > 0 && nomePasta.StartsWith(prefixo, StringComparison.OrdinalIgnoreCase)
+                ? nomePasta[prefixo.Length..].Trim()
+                : nomePasta.Trim();
 
             lista.Add(new EmpresaInfo
             {
-                Chave = nomePasta[prefixo.Length..].Trim(),
+                Chave = chave,
                 NomePasta = nomePasta,
-                CaminhoBanco = caminhoBanco,
+                CaminhoBanco = caminhoBanco ?? Path.Combine(pasta, _opcoes.CaminhoRelativoBanco),
                 BancoExiste = existe
             });
 
             if (!existe)
-                _log.LogWarning("Empresa {Pasta}: DADOSTAB.accdb nao encontrado em {Caminho}", nomePasta, caminhoBanco);
+                _log.LogWarning("Empresa {Pasta}: DADOSTAB.accdb nao encontrado em {Pasta}", nomePasta, pasta);
         }
 
         return lista
             .OrderBy(e => e.Chave, StringComparer.OrdinalIgnoreCase)
             .ToList();
+    }
+
+    /// <summary>
+    /// Acha o banco Access de uma pasta de empresa, tolerante a nome/extensao/layout:
+    ///   1) o caminho relativo configurado (ex.: bd\DADOSTAB.accdb), se existir;
+    ///   2) um arquivo DADOSTAB.accdb ou DADOSTAB.mdb (raiz ou ate 2 niveis abaixo);
+    ///   3) como ultimo recurso, o primeiro .accdb/.mdb encontrado na pasta.
+    /// Retorna null se nao encontrar nenhum banco Access.
+    /// </summary>
+    private string? ResolverCaminhoBanco(string pastaEmpresa)
+    {
+        // 1) Caminho relativo configurado (ex.: bd\DADOSTAB.accdb)
+        var relativo = Path.Combine(pastaEmpresa, _opcoes.CaminhoRelativoBanco);
+        if (File.Exists(relativo)) return relativo;
+
+        try
+        {
+            // Lista todos os bancos Access da pasta (recursivo). O nome do arquivo no SGA
+            // pode variar de caixa (ex.: "DadosTab.accdb"), entao casamos sem diferenciar
+            // maiusculas/minusculas em vez de depender do padrao do EnumerateFiles.
+            var bancos = new[] { "*.accdb", "*.mdb" }
+                .SelectMany(p => Directory.EnumerateFiles(pastaEmpresa, p, SearchOption.AllDirectories))
+                .ToList();
+
+            // 2) Prioriza um arquivo chamado "DADOSTAB" (qualquer caixa, .accdb ou .mdb).
+            var dadostab = bancos.FirstOrDefault(f =>
+                string.Equals(Path.GetFileNameWithoutExtension(f), "DADOSTAB", StringComparison.OrdinalIgnoreCase));
+            if (dadostab is not null) return dadostab;
+
+            // 3) Fallback: o primeiro banco Access encontrado na pasta.
+            var primeiro = bancos.FirstOrDefault();
+            if (primeiro is not null)
+            {
+                _log.LogInformation("Empresa em {Pasta}: usando banco {Arquivo} (nenhum DADOSTAB encontrado pelo nome).",
+                    pastaEmpresa, Path.GetFileName(primeiro));
+                return primeiro;
+            }
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "Falha ao varrer {Pasta} por banco Access", pastaEmpresa);
+        }
+        return null;
     }
 
     /// <summary>

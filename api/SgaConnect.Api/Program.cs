@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using SgaConnect.Api.Auth;
 using SgaConnect.Api.Config;
@@ -113,6 +114,33 @@ app.MapGet("/diagnostico/conexoes", (DescobridorEmpresas descobridor) =>
         return new { empresa = e.Chave, bancoExiste = e.BancoExiste, conexaoOk = ok, mensagem = msg };
     });
     return Results.Ok(resultado);
+});
+
+// Diagnostico CRU: mostra o que a API enxerga no disco (pasta raiz, subpastas e arquivos).
+// Serve para entender por que um banco nao e achado. So em Development.
+app.MapGet("/diagnostico/pastas", (IOptions<SgaOptions> opt) =>
+{
+    var o = opt.Value;
+    var raiz = o.PastaRaiz;
+    if (string.IsNullOrWhiteSpace(raiz) || !Directory.Exists(raiz))
+        return Results.Ok(new { pastaRaiz = raiz, raizExiste = false, prefixo = o.PrefixoPastaEmpresa, subpastas = Array.Empty<object>() });
+
+    var sub = Directory.EnumerateDirectories(raiz).Select(p =>
+    {
+        string[] arquivos;
+        try { arquivos = Directory.GetFiles(p, "*", SearchOption.AllDirectories).Select(Path.GetFileName).OfType<string>().ToArray(); }
+        catch (Exception ex) { arquivos = new[] { "ERRO: " + ex.Message }; }
+        return new { pasta = Path.GetFileName(p), arquivos };
+    });
+
+    return Results.Ok(new
+    {
+        pastaRaiz = raiz,
+        raizExiste = true,
+        prefixo = o.PrefixoPastaEmpresa,
+        caminhoRelativoBanco = o.CaminhoRelativoBanco,
+        subpastas = sub
+    });
 });
 
 // Lista as empresas disponiveis para a tela de login escolher (so chave + nome da pasta).
