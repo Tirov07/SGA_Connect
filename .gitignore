@@ -4,6 +4,7 @@ appsettings.*.Local.json
 *.env
 .env
 .env.*
+!.env.example
 
 # ---- Banco proprio do app ----
 *.db
