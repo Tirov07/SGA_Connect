@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "SGA Connect",
+    "slug": "sga-connect",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "sgaconnect",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0E0E10",
+    "splash": {
+      "backgroundColor": "#0E0E10",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "br.com.canainfo.sgaconnect"
+    },
+    "android": {
+      "package": "br.com.canainfo.sgaconnect"
+    },
+    "plugins": ["expo-router", "expo-secure-store"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
