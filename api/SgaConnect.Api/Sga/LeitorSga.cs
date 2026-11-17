@@ -45,6 +45,23 @@ public sealed class LeitorSga
     public int EscalarInt(string sql, params object?[] parametros)
         => (int)EscalarDecimal(sql, parametros);
 
+    /// <summary>
+    /// Lista os nomes das colunas de uma tabela (via esquema do OLEDB). Usado so em
+    /// diagnostico, para confirmar a grafia exata dos campos do SGA sem adivinhar.
+    /// </summary>
+    public List<string> ListarColunas(string tabela)
+    {
+        using var conexao = AcessoBancoSga.AbrirSomenteLeitura(_caminhoAccdb);
+        // Pega o schema sem trazer linhas (TOP 0), lido direto do reader.
+        using var cmd = conexao.CreateCommand();
+        cmd.CommandText = $"SELECT * FROM [{tabela}] WHERE 1 = 0";
+        using var reader = cmd.ExecuteReader(System.Data.CommandBehavior.SchemaOnly);
+        var colunas = new List<string>();
+        for (var i = 0; i < reader.FieldCount; i++)
+            colunas.Add(reader.GetName(i));
+        return colunas;
+    }
+
     private static OleDbCommand NovoComando(OleDbConnection conexao, string sql, object?[] parametros)
     {
         var cmd = conexao.CreateCommand();

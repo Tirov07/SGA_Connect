@@ -185,6 +185,30 @@ app.MapGet("/diagnostico/pastas", (IOptions<SgaOptions> opt) =>
     });
 });
 
+// Diagnostico: lista as colunas reais de uma tabela do SGA (confirma grafia dos campos).
+// Ex.: /diagnostico/campos?tabela=ITENSSERVOSV  (empresa vem do token).
+app.MapGet("/diagnostico/campos", (HttpContext ctx, DescobridorEmpresas descobridor, string tabela) =>
+{
+    var empresaChave = ctx.User.FindFirst("empresa")?.Value;
+    if (string.IsNullOrWhiteSpace(empresaChave)) return Results.Unauthorized();
+    if (string.IsNullOrWhiteSpace(tabela)) return Results.BadRequest(new { erro = "Informe ?tabela=NOME" });
+
+    var empresa = descobridor.Resolver(empresaChave);
+    if (empresa is null) return Results.NotFound(new { erro = "Empresa nao encontrada." });
+    if (!OperatingSystem.IsWindows())
+        return Results.Json(new { erro = "Access so no Windows." }, statusCode: 503);
+
+    try
+    {
+        var colunas = new LeitorSga(empresa.CaminhoBanco).ListarColunas(tabela);
+        return Results.Ok(new { tabela, colunas });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { tabela, erro = ex.Message });
+    }
+}).RequireAuthorization();
+
 // Lista as empresas disponiveis para a tela de login escolher (so chave + nome da pasta).
 // Login: o app envia so CPF + senha. A API varre os bancos das empresas e acha onde o
 // CPF+senha batem (somente leitura). Se achar em 1 empresa, ja devolve o token. Se achar
