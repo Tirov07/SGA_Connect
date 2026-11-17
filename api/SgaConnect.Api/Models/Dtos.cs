@@ -34,14 +34,12 @@ public sealed record ResumoResponse(
 
 public sealed record EmpresaResumo(string Chave, string NomePasta, bool BancoExiste);
 
-/// <summary>Faturamento de um dia: peca e servico das OSv fechadas no dia.</summary>
-public sealed record VendaDiaDto(int Dia, decimal Peca, decimal Servico);
+/// <summary>Faturamento de um dia (grafico-resumo da home).</summary>
+public sealed record VendaDiaDto(string Data, decimal Peca, decimal Servico, decimal Total);
 
-/// <summary>Resposta do grafico de vendas diarias de um mes.</summary>
-public sealed record VendasDiariasResponse(
-    int Ano,
-    int Mes,
-    int DiasNoMes,
+/// <summary>Resposta do grafico-resumo: ultimos N dias com movimento.</summary>
+public sealed record VendasResumoResponse(
+    int DiasRetornados,
     decimal TotalPeca,
     decimal TotalServico,
     IReadOnlyList<VendaDiaDto> Dias);

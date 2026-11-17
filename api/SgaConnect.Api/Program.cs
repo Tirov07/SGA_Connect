@@ -302,9 +302,9 @@ app.MapGet("/resumo", (HttpContext ctx, DescobridorEmpresas descobridor) =>
     return Results.Ok(resumo);
 }).RequireAuthorization();
 
-// Vendas diarias do mes (grafico da home): por dia, peca e servico das OSv fechadas.
-// Parametro opcional ?mes=AAAA-MM (default: mes atual). Empresa vem do token.
-app.MapGet("/vendas-diarias", (HttpContext ctx, DescobridorEmpresas descobridor, string? mes) =>
+// Grafico-resumo da home: os ultimos N dias COM MOVIMENTO (default 20), peca x servico
+// das OSv fechadas. Empresa vem do token. ?dias=20
+app.MapGet("/vendas-resumo", (HttpContext ctx, DescobridorEmpresas descobridor, int? dias) =>
 {
     var empresaChave = ctx.User.FindFirst("empresa")?.Value;
     var codEmpresaStr = ctx.User.FindFirst("codEmpresa")?.Value;
@@ -318,28 +318,21 @@ app.MapGet("/vendas-diarias", (HttpContext ctx, DescobridorEmpresas descobridor,
     if (!OperatingSystem.IsWindows())
         return Results.Json(new { erro = "Leitura do SGA (Access) so no Windows." }, statusCode: StatusCodes.Status503ServiceUnavailable);
 
-    // mes = "AAAA-MM"; se ausente/invalido, usa o mes atual.
-    int ano = DateTime.Today.Year, mesNum = DateTime.Today.Month;
-    if (!string.IsNullOrWhiteSpace(mes))
-    {
-        var partes = mes.Split('-');
-        if (partes.Length != 2 || !int.TryParse(partes[0], out ano) || !int.TryParse(partes[1], out mesNum)
-            || mesNum < 1 || mesNum > 12)
-            return Results.BadRequest(new { erro = "Parametro 'mes' invalido. Use AAAA-MM." });
-    }
-
+    var n = Math.Clamp(dias ?? 20, 1, 60);
     var repo = new RepositorioVendas(new LeitorSga(empresa.CaminhoBanco));
-    var dias = repo.VendasDiarias(codEmpresa, ano, mesNum)
-        .Select(d => new VendaDiaDto(d.Dia, d.Peca, d.Servico))
+    var lista = repo.UltimosDiasComMovimento(codEmpresa, n)
+        .Select(d => new VendaDiaDto(
+            Data: d.Data.ToString("yyyy-MM-dd"),
+            Peca: d.Peca,
+            Servico: d.Servico,
+            Total: d.Peca + d.Servico))
         .ToList();
 
-    return Results.Ok(new VendasDiariasResponse(
-        Ano: ano,
-        Mes: mesNum,
-        DiasNoMes: DateTime.DaysInMonth(ano, mesNum),
-        TotalPeca: dias.Sum(d => d.Peca),
-        TotalServico: dias.Sum(d => d.Servico),
-        Dias: dias));
+    return Results.Ok(new VendasResumoResponse(
+        DiasRetornados: lista.Count,
+        TotalPeca: lista.Sum(d => d.Peca),
+        TotalServico: lista.Sum(d => d.Servico),
+        Dias: lista));
 }).RequireAuthorization();
 
 app.Run();
