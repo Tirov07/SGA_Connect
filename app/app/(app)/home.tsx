@@ -10,18 +10,27 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../../src/auth";
-import { api, Resumo } from "../../src/api";
+import { api, Resumo, VendasResumo } from "../../src/api";
 import { theme } from "../../src/theme";
 import { moeda, horaCurta } from "../../src/format";
 import { StatCard } from "../../src/components/StatCard";
 import { Card } from "../../src/components/Card";
-import { BarrasFinanceiro } from "../../src/components/BarrasFinanceiro";
+import { BotaoMenu } from "../../src/components/BotaoMenu";
+import { GraficoVendas } from "../../src/components/GraficoVendas";
+
+const MENU = [
+  { chave: "osv", rotulo: "OSv", icone: "🔧" },
+  { chave: "financeiro", rotulo: "Financeiro", icone: "💰" },
+  { chave: "estoque", rotulo: "Estoque", icone: "📦" },
+  { chave: "tecnico", rotulo: "Dep. Técnico", icone: "🛠️" },
+];
 
 export default function Home() {
   const { sessao, sair } = useAuth();
   const insets = useSafeAreaInsets();
 
   const [resumo, setResumo] = useState<Resumo | null>(null);
+  const [vendas, setVendas] = useState<VendasResumo | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [atualizando, setAtualizando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -30,7 +39,12 @@ export default function Home() {
     if (!sessao) return;
     setErro(null);
     try {
-      setResumo(await api.resumo(sessao.token));
+      const [r, v] = await Promise.all([
+        api.resumo(sessao.token),
+        api.vendasResumo(sessao.token, 20),
+      ]);
+      setResumo(r);
+      setVendas(v);
     } catch {
       setErro("Nao consegui atualizar os dados.");
     } finally {
@@ -44,21 +58,6 @@ export default function Home() {
   }, [carregar]);
 
   const primeiroNome = sessao?.nome?.split(" ")[0] ?? "";
-
-  const barras = resumo
-    ? [
-        {
-          rotulo: "A receber",
-          valor: resumo.totalAReceberMes,
-          cores: ["#35C759", "#1F7A3A"] as [string, string],
-        },
-        {
-          rotulo: "A pagar",
-          valor: resumo.totalAPagarMes,
-          cores: ["#E11D2A", "#8E1119"] as [string, string],
-        },
-      ]
-    : [];
 
   return (
     <ScrollView
@@ -89,45 +88,50 @@ export default function Home() {
         </TouchableOpacity>
       </View>
 
+      {/* Menu principal */}
+      <View style={estilos.menu}>
+        {MENU.map((m) => (
+          <BotaoMenu key={m.chave} rotulo={m.rotulo} icone={m.icone} />
+        ))}
+      </View>
+
       {carregando ? (
         <ActivityIndicator color={theme.cores.primaria} size="large" style={{ marginTop: theme.espaco(8) }} />
       ) : (
         <>
           {erro ? <Text style={estilos.erro}>{erro}</Text> : null}
 
-          <View style={estilos.linha}>
-            <StatCard
-              rotulo="OS abertas"
-              valor={String(resumo?.ordensServicoAbertas ?? 0)}
-            />
-            <StatCard
-              rotulo="Fechadas (7 dias)"
-              valor={String(resumo?.ordensServicoFechadas7Dias ?? 0)}
-            />
-          </View>
+          {/* Grafico de vendas e servicos */}
+          <Card style={estilos.graficoCard}>
+            <Text style={estilos.secaoTitulo}>Vendas e serviços</Text>
+            <Text style={estilos.secaoSub}>Últimos dias com movimento</Text>
+            {vendas && vendas.dias.length > 0 ? (
+              <GraficoVendas dias={vendas.dias} />
+            ) : (
+              <Text style={estilos.vazio}>Sem movimento no período.</Text>
+            )}
+          </Card>
 
+          {/* Resumo */}
+          <View style={estilos.linha}>
+            <StatCard rotulo="OS abertas" valor={String(resumo?.ordensServicoAbertas ?? 0)} />
+            <StatCard rotulo="Fechadas (7 dias)" valor={String(resumo?.ordensServicoFechadas7Dias ?? 0)} />
+          </View>
           <View style={estilos.linha}>
             <StatCard
-              rotulo="A receber (mes)"
+              rotulo="A receber (mês)"
               valor={moeda(resumo?.totalAReceberMes ?? 0)}
               cor={theme.cores.positivo}
             />
             <StatCard
-              rotulo="A pagar (mes)"
+              rotulo="A pagar (mês)"
               valor={moeda(resumo?.totalAPagarMes ?? 0)}
               cor={theme.cores.negativo}
             />
           </View>
 
-          <Card style={estilos.graficoCard}>
-            <Text style={estilos.graficoTitulo}>Financeiro do mes</Text>
-            <BarrasFinanceiro barras={barras} />
-          </Card>
-
           {resumo ? (
-            <Text style={estilos.atualizado}>
-              Atualizado as {horaCurta(resumo.geradoEm)}
-            </Text>
+            <Text style={estilos.atualizado}>Atualizado as {horaCurta(resumo.geradoEm)}</Text>
           ) : null}
         </>
       )}
@@ -141,7 +145,7 @@ const estilos = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: theme.espaco(3),
+    marginBottom: theme.espaco(2),
   },
   ola: { color: theme.cores.texto, fontSize: theme.fonte.titulo, fontWeight: "800" },
   empresa: {
@@ -160,20 +164,21 @@ const estilos = StyleSheet.create({
     backgroundColor: theme.cores.superficie,
   },
   sairTxt: { color: theme.cores.textoFraco, fontWeight: "700", fontSize: theme.fonte.pequeno },
-  linha: { flexDirection: "row", gap: theme.espaco(1.5), marginBottom: theme.espaco(1.5) },
-  graficoCard: { marginTop: theme.espaco(1.5), alignItems: "center" },
-  graficoTitulo: {
-    alignSelf: "flex-start",
-    color: theme.cores.texto,
-    fontSize: theme.fonte.secao,
-    fontWeight: "700",
-    marginBottom: theme.espaco(2),
+  menu: { flexDirection: "row", gap: theme.espaco(1.5), marginBottom: theme.espaco(2.5) },
+  graficoCard: { marginBottom: theme.espaco(2) },
+  secaoTitulo: { color: theme.cores.texto, fontSize: theme.fonte.secao, fontWeight: "800" },
+  secaoSub: {
+    color: theme.cores.textoFraco,
+    fontSize: theme.fonte.pequeno,
+    marginBottom: theme.espaco(1.5),
   },
+  vazio: { color: theme.cores.textoApagado, fontSize: theme.fonte.corpo, paddingVertical: theme.espaco(3) },
+  linha: { flexDirection: "row", gap: theme.espaco(1.5), marginBottom: theme.espaco(1.5) },
   erro: { color: theme.cores.primaria, marginBottom: theme.espaco(1.5) },
   atualizado: {
     color: theme.cores.textoApagado,
     fontSize: theme.fonte.pequeno,
     textAlign: "center",
-    marginTop: theme.espaco(2),
+    marginTop: theme.espaco(1),
   },
 });

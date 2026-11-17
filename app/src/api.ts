@@ -21,6 +21,20 @@ export type Resumo = {
   totalAPagarMes: number;
 };
 
+export type VendaDia = {
+  data: string; // "AAAA-MM-DD"
+  peca: number;
+  servico: number;
+  total: number;
+};
+
+export type VendasResumo = {
+  diasRetornados: number;
+  totalPeca: number;
+  totalServico: number;
+  dias: VendaDia[];
+};
+
 class ApiError extends Error {
   constructor(public status: number, message: string) {
     super(message);
@@ -56,6 +70,13 @@ export const api = {
 
   async resumo(token: string): Promise<Resumo> {
     const resp = await fetch(`${API_URL}/resumo`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return tratar(resp);
+  },
+
+  async vendasResumo(token: string, dias = 20): Promise<VendasResumo> {
+    const resp = await fetch(`${API_URL}/vendas-resumo?dias=${dias}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return tratar(resp);
