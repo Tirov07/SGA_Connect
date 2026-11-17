@@ -48,33 +48,58 @@ public sealed class RepositorioResumo
     }
 
     /// <summary>
-    /// Total a RECEBER no mes corrente: titulos da CTREC em aberto com vencimento no mes.
-    /// EmAberto no SGA e Sim/Nao -> no Access TRUE = -1 (por isso EmAberto &lt;&gt; 0).
+    /// Total a RECEBER no mes corrente, mesma logica do a pagar: para cada titulo da CTREC
+    /// com vencimento no mes, saldo = Valor - (soma de ValorPago na PGCTREC do titulo).
+    /// A PGCTREC liga pela coluna NroConta_CTREC = CTREC.NroConta (vinculo direto).
     /// </summary>
     public decimal TotalAReceberMes(int codEmpresa)
     {
         var (inicio, fim) = MesCorrente();
         const string sql = """
-            SELECT SUM(Valor) FROM CTREC
-            WHERE CodEmpresa = ?
-              AND EmAberto <> 0
-              AND DataVencimento >= ? AND DataVencimento < ?
+            SELECT SUM(saldo) FROM (
+                SELECT r.Valor - (
+                    SELECT IIF(IsNull(SUM(g.ValorPago)), 0, SUM(g.ValorPago))
+                    FROM PGCTREC AS g
+                    WHERE g.NroConta_CTREC = r.NroConta
+                ) AS saldo
+                FROM CTREC AS r
+                WHERE r.CodEmpresa = ?
+                  AND r.DataVencimento >= ? AND r.DataVencimento < ?
+            ) AS t
+            WHERE saldo > 0
             """;
         return _leitor.EscalarDecimal(sql, codEmpresa, inicio, fim);
     }
 
     /// <summary>
-    /// Total a PAGAR no mes corrente: titulos da CTPAG em aberto com vencimento no mes.
-    /// Nomes proprios da CTPAG: empresa = CodigoEmpresa, vencimento = Vencimento.
+    /// Total a PAGAR no mes corrente, igual ao SGA: para cada titulo da CTPAG com
+    /// vencimento no mes, o saldo = Valor - (soma de ValorPago na LIQCTPAG do mesmo titulo).
+    /// Soma so os saldos positivos (titulos ainda em aberto, inclusive parciais).
+    ///
+    /// Chave do titulo CTPAG x LIQCTPAG (confirmada pelo cliente):
+    ///   NotaFiscal + CodigoFornecedor + CodigoEmpresa + Vencimento.
+    ///   Atencao: na LIQCTPAG o vencimento chama DataVencimento (na CTPAG, Vencimento).
     /// </summary>
     public decimal TotalAPagarMes(int codEmpresa)
     {
         var (inicio, fim) = MesCorrente();
+        // Subconsulta correlacionada soma os pagamentos (parciais) de cada titulo.
+        // O saldo por titulo e Valor - pago; somamos so onde o saldo e > 0.
         const string sql = """
-            SELECT SUM(Valor) FROM CTPAG
-            WHERE CodigoEmpresa = ?
-              AND EmAberto <> 0
-              AND Vencimento >= ? AND Vencimento < ?
+            SELECT SUM(saldo) FROM (
+                SELECT p.Valor - (
+                    SELECT IIF(IsNull(SUM(l.ValorPago)), 0, SUM(l.ValorPago))
+                    FROM LIQCTPAG AS l
+                    WHERE l.NotaFiscal = p.NotaFiscal
+                      AND l.CodigoFornecedor = p.CodigoFornecedor
+                      AND l.CodigoEmpresa = p.CodigoEmpresa
+                      AND l.DataVencimento = p.Vencimento
+                ) AS saldo
+                FROM CTPAG AS p
+                WHERE p.CodigoEmpresa = ?
+                  AND p.Vencimento >= ? AND p.Vencimento < ?
+            ) AS t
+            WHERE saldo > 0
             """;
         return _leitor.EscalarDecimal(sql, codEmpresa, inicio, fim);
     }
