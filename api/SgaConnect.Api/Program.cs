@@ -73,7 +73,31 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
     p.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin())); // ajustar origem na etapa do app
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    // Botao "Authorize" no Swagger: cole o token (sem a palavra "Bearer", o Swagger adiciona).
+    var esquema = new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Description = "Cole aqui o token recebido no /auth/login (so o token, sem 'Bearer ')."
+    };
+    c.AddSecurityDefinition("Bearer", esquema);
+    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        [new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+        {
+            Reference = new Microsoft.OpenApi.Models.OpenApiReference
+            {
+                Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                Id = "Bearer"
+            }
+        }] = Array.Empty<string>()
+    });
+});
 
 var app = builder.Build();
 
@@ -115,6 +139,24 @@ app.MapGet("/diagnostico/conexoes", (DescobridorEmpresas descobridor) =>
     });
     return Results.Ok(resultado);
 });
+
+// Diagnostico TEMPORARIO: calibra o criterio de "a pagar do mes" comparando varias
+// somas/contagens da CTPAG com o valor que o SGA mostra. Usa a empresa do token.
+app.MapGet("/diagnostico/contas-pagar", (HttpContext ctx, DescobridorEmpresas descobridor) =>
+{
+    var empresaChave = ctx.User.FindFirst("empresa")?.Value;
+    var codEmpresaStr = ctx.User.FindFirst("codEmpresa")?.Value;
+    if (string.IsNullOrWhiteSpace(empresaChave) || !int.TryParse(codEmpresaStr, out var codEmpresa))
+        return Results.Unauthorized();
+
+    var empresa = descobridor.Resolver(empresaChave);
+    if (empresa is null) return Results.NotFound(new { erro = "Empresa nao encontrada." });
+    if (!OperatingSystem.IsWindows())
+        return Results.Json(new { erro = "Access so no Windows." }, statusCode: 503);
+
+    var repo = new RepositorioResumo(new LeitorSga(empresa.CaminhoBanco));
+    return Results.Ok(repo.DiagnosticoContasPagar(codEmpresa));
+}).RequireAuthorization();
 
 // Diagnostico CRU: mostra o que a API enxerga no disco (pasta raiz, subpastas e arquivos).
 // Serve para entender por que um banco nao e achado. So em Development.
