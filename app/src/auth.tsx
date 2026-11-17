@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import * as SecureStore from "expo-secure-store";
-import { api, LoginResposta } from "./api";
+import { api, LoginResposta, EmpresaDoUsuario } from "./api";
 
 type Sessao = {
   token: string;
@@ -10,10 +10,18 @@ type Sessao = {
   expiraEm: string;
 };
 
+/**
+ * Resultado do entrar(): ou a sessao foi criada (ok), ou o CPF existe em varias
+ * empresas e o app precisa mostrar a lista para o usuario escolher.
+ */
+type ResultadoEntrar =
+  | { tipo: "ok" }
+  | { tipo: "escolher"; empresas: EmpresaDoUsuario[] };
+
 type AuthContexto = {
   sessao: Sessao | null;
   carregando: boolean;
-  entrar: (login: string, senha: string, empresa: string) => Promise<void>;
+  entrar: (login: string, senha: string, empresa?: string) => Promise<ResultadoEntrar>;
   sair: () => Promise<void>;
 };
 
@@ -42,17 +50,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  async function entrar(login: string, senha: string, empresa: string) {
+  async function entrar(
+    login: string,
+    senha: string,
+    empresa?: string
+  ): Promise<ResultadoEntrar> {
     const r: LoginResposta = await api.login(login, senha, empresa);
+
+    // CPF em varias empresas: ainda nao ha token; o app mostra a lista para escolher.
+    if (r.precisaEscolherEmpresa && r.empresas) {
+      return { tipo: "escolher", empresas: r.empresas };
+    }
+
+    if (!r.token || !r.empresa || r.codEmpresa == null || !r.expiraEm) {
+      throw new Error("Resposta de login invalida.");
+    }
+
     const s: Sessao = {
       token: r.token,
-      nome: r.nome,
+      nome: r.nome ?? "",
       empresa: r.empresa,
       codEmpresa: r.codEmpresa,
       expiraEm: r.expiraEm,
     };
     await SecureStore.setItemAsync(CHAVE, JSON.stringify(s));
     setSessao(s);
+    return { tipo: "ok" };
   }
 
   async function sair() {

@@ -54,6 +54,8 @@ app/
 
 ## Telas desta entrega
 
-- **Login:** escolhe a empresa (de `/auth/empresas`), CPF + senha → `/auth/login`.
+- **Login:** CPF + senha. O app **não** pede a empresa de cara — a API descobre em quais
+  empresas o CPF existe. Se for uma só, entra direto; se o CPF estiver em várias, o app
+  mostra a lista (só as do usuário) para ele escolher.
 - **Home:** OS abertas, OS fechadas (7 dias), a receber e a pagar do mês + gráfico,
   de `/resumo`. Puxar para atualizar.

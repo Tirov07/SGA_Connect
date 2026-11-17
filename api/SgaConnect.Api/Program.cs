@@ -186,34 +186,68 @@ app.MapGet("/diagnostico/pastas", (IOptions<SgaOptions> opt) =>
 });
 
 // Lista as empresas disponiveis para a tela de login escolher (so chave + nome da pasta).
-app.MapGet("/auth/empresas", (DescobridorEmpresas descobridor) =>
-    Results.Ok(descobridor.Listar()
-        .Where(e => e.BancoExiste)
-        .Select(e => new EmpresaResumo(e.Chave, e.NomePasta, e.BancoExiste))));
-
-// Login: o usuario informa login + senha + a empresa (chave da pasta). Validamos a senha
-// contra a EmpresaxUsuariosConn daquele DADOSTAB (somente leitura). A empresa escolhida e
-// "selada" no JWT; dai em diante o app nunca mais informa empresa nos requests de dados.
-app.MapPost("/auth/login", (LoginRequestEmpresa req, DescobridorEmpresas descobridor, ServicoJwt jwt) =>
+// Login: o app envia so CPF + senha. A API varre os bancos das empresas e acha onde o
+// CPF+senha batem (somente leitura). Se achar em 1 empresa, ja devolve o token. Se achar
+// em varias, devolve a lista SO dessas empresas para o usuario escolher; o app chama de
+// novo com o campo Empresa preenchido. A empresa escolhida e "selada" no JWT.
+app.MapPost("/auth/login", (LoginRequest req, DescobridorEmpresas descobridor, ServicoJwt jwt) =>
 {
-    if (string.IsNullOrWhiteSpace(req.Login) || string.IsNullOrWhiteSpace(req.Senha) || string.IsNullOrWhiteSpace(req.Empresa))
-        return Results.BadRequest(new { erro = "Informe empresa, login e senha." });
+    if (string.IsNullOrWhiteSpace(req.Login) || string.IsNullOrWhiteSpace(req.Senha))
+        return Results.BadRequest(new { erro = "Informe CPF e senha." });
 
     if (!OperatingSystem.IsWindows())
         return Results.Json(new { erro = "Leitura do SGA (Access) so no Windows." }, statusCode: StatusCodes.Status503ServiceUnavailable);
 
-    var empresa = descobridor.Resolver(req.Empresa);
-    if (empresa is null)
-        return Results.Json(new { erro = "Login ou senha invalidos." }, statusCode: StatusCodes.Status401Unauthorized);
+    var repoLogin = new RepositorioLoginSga();
 
-    var leitor = new LeitorSga(empresa.CaminhoBanco);
-    var usuario = new RepositorioLoginSga().Autenticar(leitor, req.Login, req.Senha);
-    // Mesma resposta para usuario inexistente e senha errada (nao revela qual falhou).
-    if (usuario is null)
-        return Results.Json(new { erro = "Login ou senha invalidos." }, statusCode: StatusCodes.Status401Unauthorized);
+    // Autentica em cada empresa com banco valido; coleta onde o CPF+senha batem.
+    var matches = new List<(EmpresaInfo empresa, RepositorioLoginSga.UsuarioSga usuario)>();
+    foreach (var e in descobridor.Listar().Where(e => e.BancoExiste))
+    {
+        try
+        {
+            var u = repoLogin.Autenticar(new LeitorSga(e.CaminhoBanco), req.Login, req.Senha);
+            if (u is not null) matches.Add((e, u));
+        }
+        catch (Exception ex)
+        {
+            app.Logger.LogWarning(ex, "Falha ao autenticar na empresa {Empresa}", e.Chave);
+        }
+    }
 
-    var (token, expira) = jwt.Gerar(usuario.Cpf, usuario.Nome, empresa.Chave, usuario.CodEmpresa);
-    return Results.Ok(new LoginResponse(token, expira, usuario.Nome, empresa.Chave, usuario.CodEmpresa));
+    if (matches.Count == 0)
+        return Results.Json(new { erro = "CPF ou senha invalidos." }, statusCode: StatusCodes.Status401Unauthorized);
+
+    (EmpresaInfo empresa, RepositorioLoginSga.UsuarioSga usuario)? escolhido = null;
+
+    if (!string.IsNullOrWhiteSpace(req.Empresa))
+    {
+        // 2a chamada: o usuario ja escolheu. So aceita se a empresa esta entre as dele.
+        escolhido = matches.FirstOrDefault(m =>
+            string.Equals(m.empresa.Chave, req.Empresa.Trim(), StringComparison.OrdinalIgnoreCase));
+        if (escolhido is null || escolhido.Value.empresa is null)
+            return Results.Json(new { erro = "CPF ou senha invalidos." }, statusCode: StatusCodes.Status401Unauthorized);
+    }
+    else if (matches.Count == 1)
+    {
+        escolhido = matches[0];
+    }
+    else
+    {
+        // CPF em varias empresas: devolve so as dele para escolher (nao emite token ainda).
+        var opcoes = matches
+            .Select(m => new EmpresaDoUsuario(m.empresa.Chave, m.usuario.Nome, m.usuario.CodEmpresa))
+            .ToList();
+        return Results.Ok(new LoginResponse(
+            Token: null, ExpiraEm: null, Nome: null, Empresa: null, CodEmpresa: null,
+            PrecisaEscolherEmpresa: true, Empresas: opcoes));
+    }
+
+    var (emp, usr) = escolhido!.Value;
+    var (token, expira) = jwt.Gerar(usr.Cpf, usr.Nome, emp.Chave, usr.CodEmpresa);
+    return Results.Ok(new LoginResponse(
+        Token: token, ExpiraEm: expira, Nome: usr.Nome, Empresa: emp.Chave, CodEmpresa: usr.CodEmpresa,
+        PrecisaEscolherEmpresa: false, Empresas: null));
 }).RequireRateLimiting("login");
 
 // Resumo da home — le OS + financeiro do DADOSTAB (somente leitura). A empresa e o
