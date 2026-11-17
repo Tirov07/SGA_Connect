@@ -9,13 +9,13 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { BarChart } from "react-native-gifted-charts";
 import { useAuth } from "../../src/auth";
 import { api, Resumo } from "../../src/api";
 import { theme } from "../../src/theme";
 import { moeda, horaCurta } from "../../src/format";
 import { StatCard } from "../../src/components/StatCard";
 import { Card } from "../../src/components/Card";
+import { BarrasFinanceiro } from "../../src/components/BarrasFinanceiro";
 
 export default function Home() {
   const { sessao, sair } = useAuth();
@@ -45,17 +45,17 @@ export default function Home() {
 
   const primeiroNome = sessao?.nome?.split(" ")[0] ?? "";
 
-  const dadosGrafico = resumo
+  const barras = resumo
     ? [
         {
-          value: resumo.totalAReceberMes,
-          label: "A receber",
-          frontColor: theme.cores.positivo,
+          rotulo: "A receber",
+          valor: resumo.totalAReceberMes,
+          cores: ["#35C759", "#1F7A3A"] as [string, string],
         },
         {
-          value: resumo.totalAPagarMes,
-          label: "A pagar",
-          frontColor: theme.cores.negativo,
+          rotulo: "A pagar",
+          valor: resumo.totalAPagarMes,
+          cores: ["#E11D2A", "#8E1119"] as [string, string],
         },
       ]
     : [];
@@ -121,19 +121,7 @@ export default function Home() {
 
           <Card style={estilos.graficoCard}>
             <Text style={estilos.graficoTitulo}>Financeiro do mes</Text>
-            <BarChart
-              data={dadosGrafico}
-              barWidth={54}
-              spacing={48}
-              roundedTop
-              hideRules
-              xAxisThickness={0}
-              yAxisThickness={0}
-              yAxisTextStyle={{ color: theme.cores.textoApagado }}
-              xAxisLabelTextStyle={{ color: theme.cores.textoFraco, fontSize: 12 }}
-              noOfSections={3}
-              isAnimated
-            />
+            <BarrasFinanceiro barras={barras} />
           </Card>
 
           {resumo ? (
