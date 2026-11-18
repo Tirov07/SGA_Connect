@@ -107,20 +107,44 @@ public sealed class RepositorioFinanceiro
 
     // ---------- VENCIDOS ----------
 
-    /// <summary>Vencidos = em aberto (saldo &gt; 0) com vencimento anterior a hoje.</summary>
+    /// <summary>
+    /// Vencidos = em aberto (saldo &gt; 0) com vencimento anterior a hoje.
+    /// Usa agregacao por GRUPO (LEFT JOIN + GROUP BY), que no Access e MUITO mais rapido
+    /// que subconsulta correlacionada por linha (importante em banco grande).
+    /// </summary>
     public ResumoVencidos Vencidos(int codEmpresa)
     {
         var hoje = DateTime.Today;
-        var inicioAmplo = hoje.AddYears(-5); // janela larga para tras
 
-        var receber = ReceberEmAberto(codEmpresa, inicioAmplo, hoje);
-        var pagar = PagarEmAberto(codEmpresa, inicioAmplo, hoje);
+        // A RECEBER vencido: por titulo (NroConta), Valor - SUM(pago) via LEFT JOIN PGCTREC.
+        const string sqlReceber = """
+            SELECT c.Valor - IIF(IsNull(SUM(g.ValorPago)),0,SUM(g.ValorPago)) AS Saldo
+            FROM CTREC AS c
+            LEFT JOIN PGCTREC AS g ON g.NroConta_CTREC = c.NroConta
+            WHERE c.CodEmpresa = ? AND c.DataVencimento < ?
+            GROUP BY c.NroConta, c.Valor
+            """;
+        var receber = _leitor.Consultar(sqlReceber, r => Dec(r["Saldo"]), codEmpresa, hoje)
+            .Where(s => s > 0).ToList();
+
+        // A PAGAR vencido: por titulo (chave composta), Valor - SUM(pago) via LEFT JOIN LIQCTPAG.
+        const string sqlPagar = """
+            SELECT p.Valor - IIF(IsNull(SUM(l.ValorPago)),0,SUM(l.ValorPago)) AS Saldo
+            FROM CTPAG AS p
+            LEFT JOIN LIQCTPAG AS l
+              ON l.NotaFiscal = p.NotaFiscal AND l.CodigoFornecedor = p.CodigoFornecedor
+             AND l.CodigoEmpresa = p.CodigoEmpresa AND l.DataVencimento = p.Vencimento
+            WHERE p.CodigoEmpresa = ? AND p.Vencimento < ?
+            GROUP BY p.NotaFiscal, p.CodigoFornecedor, p.CodigoEmpresa, p.Vencimento, p.Valor
+            """;
+        var pagar = _leitor.Consultar(sqlPagar, r => Dec(r["Saldo"]), codEmpresa, hoje)
+            .Where(s => s > 0).ToList();
 
         return new ResumoVencidos(
             QtdReceber: receber.Count,
-            TotalReceber: receber.Sum(t => t.Saldo),
+            TotalReceber: receber.Sum(),
             QtdPagar: pagar.Count,
-            TotalPagar: pagar.Sum(t => t.Saldo));
+            TotalPagar: pagar.Sum());
     }
 
     private static string Txt(object? v) => v is null or DBNull ? "" : v.ToString()!.Trim();
