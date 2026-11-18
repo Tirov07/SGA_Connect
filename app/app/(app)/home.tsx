@@ -10,15 +10,18 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../../src/auth";
+import { useTema } from "../../src/tema";
 import { api, Resumo, VendasResumo } from "../../src/api";
 import { theme } from "../../src/theme";
 import { moeda, horaCurta } from "../../src/format";
 import { StatCard } from "../../src/components/StatCard";
 import { Card } from "../../src/components/Card";
 import { GraficoVendas } from "../../src/components/GraficoVendas";
+import { BotaoTema } from "../../src/components/BotaoTema";
 
 export default function Home() {
   const { sessao, sair } = useAuth();
+  const { cores } = useTema();
   const insets = useSafeAreaInsets();
 
   const [resumo, setResumo] = useState<Resumo | null>(null);
@@ -38,7 +41,7 @@ export default function Home() {
       setResumo(r);
       setVendas(v);
     } catch {
-      setErro("Nao consegui atualizar os dados.");
+      setErro("Não consegui atualizar os dados.");
     } finally {
       setCarregando(false);
       setAtualizando(false);
@@ -53,7 +56,7 @@ export default function Home() {
 
   return (
     <ScrollView
-      style={estilos.container}
+      style={{ flex: 1, backgroundColor: cores.fundo }}
       contentContainerStyle={{
         paddingTop: insets.top + theme.espaco(2),
         paddingBottom: insets.bottom + theme.espaco(12), // espaco para a tab bar
@@ -66,34 +69,42 @@ export default function Home() {
             setAtualizando(true);
             carregar();
           }}
-          tintColor={theme.cores.primaria}
+          tintColor={cores.primaria}
         />
       }
     >
       <View style={estilos.topo}>
         <View>
-          <Text style={estilos.ola}>Ola, {primeiroNome}</Text>
-          <Text style={estilos.empresa}>{sessao?.empresa?.toUpperCase()}</Text>
+          <Text style={[estilos.ola, { color: cores.texto }]}>Olá, {primeiroNome}</Text>
+          <Text style={[estilos.empresa, { color: cores.primaria }]}>
+            {sessao?.empresa?.toUpperCase()}
+          </Text>
         </View>
-        <TouchableOpacity style={estilos.sair} onPress={sair}>
-          <Text style={estilos.sairTxt}>Sair</Text>
-        </TouchableOpacity>
+        <View style={estilos.acoes}>
+          <BotaoTema />
+          <TouchableOpacity
+            style={[estilos.sair, { borderColor: cores.borda, backgroundColor: cores.superficie }]}
+            onPress={sair}
+          >
+            <Text style={[estilos.sairTxt, { color: cores.textoFraco }]}>Sair</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {carregando ? (
-        <ActivityIndicator color={theme.cores.primaria} size="large" style={{ marginTop: theme.espaco(8) }} />
+        <ActivityIndicator color={cores.primaria} size="large" style={{ marginTop: theme.espaco(8) }} />
       ) : (
         <>
-          {erro ? <Text style={estilos.erro}>{erro}</Text> : null}
+          {erro ? <Text style={[estilos.erro, { color: cores.primaria }]}>{erro}</Text> : null}
 
           {/* Grafico de vendas e servicos */}
           <Card style={estilos.graficoCard}>
-            <Text style={estilos.secaoTitulo}>Vendas e serviços</Text>
-            <Text style={estilos.secaoSub}>Últimos dias com movimento</Text>
+            <Text style={[estilos.secaoTitulo, { color: cores.texto }]}>Vendas e serviços</Text>
+            <Text style={[estilos.secaoSub, { color: cores.textoFraco }]}>Últimos dias com movimento</Text>
             {vendas && vendas.dias.length > 0 ? (
               <GraficoVendas dias={vendas.dias} />
             ) : (
-              <Text style={estilos.vazio}>Sem movimento no período.</Text>
+              <Text style={[estilos.vazio, { color: cores.textoApagado }]}>Sem movimento no período.</Text>
             )}
           </Card>
 
@@ -103,20 +114,14 @@ export default function Home() {
             <StatCard rotulo="Fechadas (7 dias)" valor={String(resumo?.ordensServicoFechadas7Dias ?? 0)} />
           </View>
           <View style={estilos.linha}>
-            <StatCard
-              rotulo="A receber (mês)"
-              valor={moeda(resumo?.totalAReceberMes ?? 0)}
-              cor={theme.cores.positivo}
-            />
-            <StatCard
-              rotulo="A pagar (mês)"
-              valor={moeda(resumo?.totalAPagarMes ?? 0)}
-              cor={theme.cores.negativo}
-            />
+            <StatCard rotulo="A receber (mês)" valor={moeda(resumo?.totalAReceberMes ?? 0)} cor={cores.positivo} />
+            <StatCard rotulo="A pagar (mês)" valor={moeda(resumo?.totalAPagarMes ?? 0)} cor={cores.negativo} />
           </View>
 
           {resumo ? (
-            <Text style={estilos.atualizado}>Atualizado as {horaCurta(resumo.geradoEm)}</Text>
+            <Text style={[estilos.atualizado, { color: cores.textoApagado }]}>
+              Atualizado às {horaCurta(resumo.geradoEm)}
+            </Text>
           ) : null}
         </>
       )}
@@ -125,44 +130,32 @@ export default function Home() {
 }
 
 const estilos = StyleSheet.create({
-  container: { flex: 1, backgroundColor: theme.cores.fundo },
   topo: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: theme.espaco(2),
   },
-  ola: { color: theme.cores.texto, fontSize: theme.fonte.titulo, fontFamily: theme.familia.extrabold },
+  ola: { fontSize: theme.fonte.titulo, fontFamily: theme.familia.extrabold },
   empresa: {
-    color: theme.cores.primaria,
     fontSize: theme.fonte.pequeno,
     fontFamily: theme.familia.bold,
     letterSpacing: 1,
     marginTop: 2,
   },
+  acoes: { flexDirection: "row", alignItems: "center", gap: theme.espaco(1) },
   sair: {
     paddingVertical: theme.espaco(1),
     paddingHorizontal: theme.espaco(2),
     borderRadius: theme.raio.pill,
     borderWidth: 1,
-    borderColor: theme.cores.borda,
-    backgroundColor: theme.cores.superficie,
   },
-  sairTxt: { color: theme.cores.textoFraco, fontFamily: theme.familia.bold, fontSize: theme.fonte.pequeno },
+  sairTxt: { fontFamily: theme.familia.bold, fontSize: theme.fonte.pequeno },
   graficoCard: { marginBottom: theme.espaco(2) },
-  secaoTitulo: { color: theme.cores.texto, fontSize: theme.fonte.secao, fontFamily: theme.familia.extrabold },
-  secaoSub: {
-    color: theme.cores.textoFraco,
-    fontSize: theme.fonte.pequeno,
-    marginBottom: theme.espaco(1.5),
-  },
-  vazio: { color: theme.cores.textoApagado, fontSize: theme.fonte.corpo, paddingVertical: theme.espaco(3) },
+  secaoTitulo: { fontSize: theme.fonte.secao, fontFamily: theme.familia.extrabold },
+  secaoSub: { fontSize: theme.fonte.pequeno, marginBottom: theme.espaco(1.5) },
+  vazio: { fontSize: theme.fonte.corpo, paddingVertical: theme.espaco(3) },
   linha: { flexDirection: "row", gap: theme.espaco(1.5), marginBottom: theme.espaco(1.5) },
-  erro: { color: theme.cores.primaria, marginBottom: theme.espaco(1.5) },
-  atualizado: {
-    color: theme.cores.textoApagado,
-    fontSize: theme.fonte.pequeno,
-    textAlign: "center",
-    marginTop: theme.espaco(1),
-  },
+  erro: { marginBottom: theme.espaco(1.5) },
+  atualizado: { fontSize: theme.fonte.pequeno, textAlign: "center", marginTop: theme.espaco(1) },
 });

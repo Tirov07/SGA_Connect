@@ -13,6 +13,7 @@ import {
   Manrope_800ExtraBold,
 } from "@expo-google-fonts/manrope";
 import { AuthProvider, useAuth } from "../src/auth";
+import { TemaProvider, useTema } from "../src/tema";
 import { theme } from "../src/theme";
 
 /** Aplica Manrope como fonte padrao de todo <Text> do app (sem repetir em cada estilo). */
@@ -20,6 +21,15 @@ function aplicarFontePadrao() {
   const TextQualquer = Text as unknown as { defaultProps?: { style?: unknown } };
   TextQualquer.defaultProps = TextQualquer.defaultProps ?? {};
   TextQualquer.defaultProps.style = [{ fontFamily: theme.familia.regular }];
+}
+
+function Centro() {
+  const { cores } = useTema();
+  return (
+    <View style={[estilos.centro, { backgroundColor: cores.fundo }]}>
+      <ActivityIndicator color={cores.primaria} size="large" />
+    </View>
+  );
 }
 
 function Guardiao({ children }: { children: React.ReactNode }) {
@@ -34,14 +44,27 @@ function Guardiao({ children }: { children: React.ReactNode }) {
     else if (sessao && !naAreaLogada) router.replace("/(app)/home");
   }, [sessao, carregando, segmentos]);
 
-  if (carregando) {
-    return (
-      <View style={estilos.centro}>
-        <ActivityIndicator color={theme.cores.primaria} size="large" />
-      </View>
-    );
-  }
+  if (carregando) return <Centro />;
   return <>{children}</>;
+}
+
+/** Casca com acesso ao tema: define cor da barra de status e fundo das telas. */
+function Casca() {
+  const { nome, cores } = useTema();
+  return (
+    <>
+      <StatusBar style={nome === "claro" ? "dark" : "light"} />
+      <Guardiao>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: cores.fundo },
+            animation: "fade",
+          }}
+        />
+      </Guardiao>
+    </>
+  );
 }
 
 export default function RootLayout() {
@@ -55,39 +78,19 @@ export default function RootLayout() {
 
   if (fonteCarregada) aplicarFontePadrao();
 
-  if (!fonteCarregada) {
-    return (
-      <View style={estilos.centro}>
-        <ActivityIndicator color={theme.cores.primaria} size="large" />
-      </View>
-    );
-  }
-
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <AuthProvider>
-          <StatusBar style="light" />
-          <Guardiao>
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: { backgroundColor: theme.cores.fundo },
-                animation: "fade",
-              }}
-            />
-          </Guardiao>
-        </AuthProvider>
+        <TemaProvider>
+          <AuthProvider>
+            {!fonteCarregada ? <Centro /> : <Casca />}
+          </AuthProvider>
+        </TemaProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }
 
 const estilos = StyleSheet.create({
-  centro: {
-    flex: 1,
-    backgroundColor: theme.cores.fundo,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  centro: { flex: 1, alignItems: "center", justifyContent: "center" },
 });

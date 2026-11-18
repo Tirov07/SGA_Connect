@@ -4,6 +4,7 @@ import { Tabs } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { theme } from "../../src/theme";
+import { useTema } from "../../src/tema";
 
 /**
  * Tab bar inferior com 5 itens; o item central ("Menu") e destacado num circulo,
@@ -22,9 +23,19 @@ const ABAS: { nome: string; rotulo: string; icone: IconeNome; central?: boolean 
 
 function BarraCustom({ state, navigation }: any) {
   const insets = useSafeAreaInsets();
+  const { cores } = useTema();
   return (
-    <View style={[estilos.barra, { paddingBottom: Math.max(insets.bottom, 10) }]}>
-      {ABAS.map((aba, i) => {
+    <View
+      style={[
+        estilos.barra,
+        {
+          backgroundColor: cores.superficie,
+          borderTopColor: cores.borda,
+          paddingBottom: Math.max(insets.bottom, 10),
+        },
+      ]}
+    >
+      {ABAS.map((aba) => {
         const rota = state.routes.find((r: any) => r.name === aba.nome);
         const foco = rota ? state.index === state.routes.indexOf(rota) : false;
         const ir = () => rota && navigation.navigate(aba.nome);
@@ -39,15 +50,22 @@ function BarraCustom({ state, navigation }: any) {
               accessibilityRole="button"
               accessibilityLabel={aba.rotulo}
             >
-              <View style={[estilos.circuloCentral, foco && estilos.circuloCentralAtivo]}>
+              <View
+                style={[
+                  estilos.circuloCentral,
+                  { backgroundColor: foco ? cores.primariaEscura : cores.primaria },
+                ]}
+              >
                 <Feather name={aba.icone} size={24} color="#fff" />
               </View>
-              <Text style={[estilos.rotulo, foco && estilos.rotuloAtivo]}>{aba.rotulo}</Text>
+              <Text style={[estilos.rotulo, { color: foco ? cores.texto : cores.textoApagado }]}>
+                {aba.rotulo}
+              </Text>
             </TouchableOpacity>
           );
         }
 
-        const cor = foco ? theme.cores.texto : theme.cores.textoApagado;
+        const cor = foco ? cores.texto : cores.textoApagado;
         return (
           <TouchableOpacity
             key={aba.nome}
@@ -67,12 +85,13 @@ function BarraCustom({ state, navigation }: any) {
 }
 
 export default function AppLayout() {
+  const { cores } = useTema();
   return (
     <Tabs
       tabBar={(props) => <BarraCustom {...props} />}
       screenOptions={{
         headerShown: false,
-        sceneStyle: { backgroundColor: theme.cores.fundo },
+        sceneStyle: { backgroundColor: cores.fundo },
       }}
     >
       {/* A ordem aqui nao importa para a barra (a barra usa a lista ABAS). */}
@@ -88,9 +107,7 @@ export default function AppLayout() {
 const estilos = StyleSheet.create({
   barra: {
     flexDirection: "row",
-    backgroundColor: theme.cores.superficie,
     borderTopWidth: 1,
-    borderTopColor: theme.cores.borda,
     paddingTop: theme.espaco(1),
     alignItems: "flex-end",
   },
@@ -100,17 +117,14 @@ const estilos = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: theme.cores.primaria,
     alignItems: "center",
     justifyContent: "center",
     marginTop: -22, // eleva o circulo acima da barra
-    ...theme.sombra.card,
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
   },
-  circuloCentralAtivo: { backgroundColor: theme.cores.primariaEscura },
-  rotulo: {
-    fontSize: 10,
-    color: theme.cores.textoApagado,
-    fontFamily: theme.familia.semibold,
-  },
-  rotuloAtivo: { color: theme.cores.texto },
+  rotulo: { fontSize: 10, fontFamily: theme.familia.semibold },
 });

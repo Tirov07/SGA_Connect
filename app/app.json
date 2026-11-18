@@ -5,8 +5,8 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "scheme": "sgaconnect",
-    "userInterfaceStyle": "dark",
-    "backgroundColor": "#0E0E10",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#ECECEF",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "br.com.canainfo.sgaconnect"

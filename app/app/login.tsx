@@ -12,20 +12,20 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../src/auth";
+import { useTema } from "../src/tema";
 import { EmpresaDoUsuario, ApiError } from "../src/api";
 import { theme } from "../src/theme";
 import { APP_NOME } from "../src/config";
 
 export default function Login() {
   const { entrar } = useAuth();
+  const { cores } = useTema();
   const insets = useSafeAreaInsets();
 
   const [cpf, setCpf] = useState("");
   const [senha, setSenha] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-
-  // Quando o CPF existe em varias empresas, guardamos a lista para o usuario escolher.
   const [empresas, setEmpresas] = useState<EmpresaDoUsuario[] | null>(null);
 
   async function tentar(empresa?: string) {
@@ -37,10 +37,7 @@ export default function Login() {
     setEnviando(true);
     try {
       const r = await entrar(cpf.trim(), senha, empresa);
-      if (r.tipo === "escolher") {
-        setEmpresas(r.empresas); // mostra o seletor de empresa (so as do usuario)
-      }
-      // se tipo === "ok", o Guardiao redireciona para a home automaticamente
+      if (r.tipo === "escolher") setEmpresas(r.empresas);
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : "Falha ao entrar. Tente de novo.");
     } finally {
@@ -52,7 +49,7 @@ export default function Login() {
 
   return (
     <KeyboardAvoidingView
-      style={estilos.container}
+      style={{ flex: 1, backgroundColor: cores.fundo }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView
@@ -60,79 +57,77 @@ export default function Login() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={estilos.marca}>
-          <View style={estilos.logo}>
+          <View style={[estilos.logo, { backgroundColor: cores.primaria, ...cores.sombraCard }]}>
             <Text style={estilos.logoTxt}>SGA</Text>
           </View>
-          <Text style={estilos.titulo}>{APP_NOME}</Text>
-          <Text style={estilos.subtitulo}>Acompanhe seu negocio em tempo real</Text>
+          <Text style={[estilos.titulo, { color: cores.texto }]}>{APP_NOME}</Text>
+          <Text style={[estilos.subtitulo, { color: cores.textoFraco }]}>
+            Acompanhe seu negócio em tempo real
+          </Text>
         </View>
 
         {!escolhendo ? (
           <View style={estilos.form}>
-            <Text style={estilos.label}>CPF</Text>
+            <Text style={[estilos.label, { color: cores.textoFraco }]}>CPF</Text>
             <TextInput
-              style={estilos.input}
+              style={[estilos.input, { backgroundColor: cores.superficie2, borderColor: cores.borda, color: cores.texto }]}
               value={cpf}
               onChangeText={setCpf}
-              placeholder="Somente numeros"
-              placeholderTextColor={theme.cores.textoApagado}
+              placeholder="Somente números"
+              placeholderTextColor={cores.textoApagado}
               keyboardType="number-pad"
               autoCapitalize="none"
               editable={!enviando}
             />
 
-            <Text style={estilos.label}>Senha</Text>
+            <Text style={[estilos.label, { color: cores.textoFraco }]}>Senha</Text>
             <TextInput
-              style={estilos.input}
+              style={[estilos.input, { backgroundColor: cores.superficie2, borderColor: cores.borda, color: cores.texto }]}
               value={senha}
               onChangeText={setSenha}
               placeholder="Sua senha"
-              placeholderTextColor={theme.cores.textoApagado}
+              placeholderTextColor={cores.textoApagado}
               secureTextEntry
               editable={!enviando}
               onSubmitEditing={() => tentar()}
             />
 
-            {erro ? <Text style={estilos.erro}>{erro}</Text> : null}
+            {erro ? <Text style={[estilos.erro, { color: cores.primaria }]}>{erro}</Text> : null}
 
             <TouchableOpacity
-              style={[estilos.botao, enviando && { opacity: 0.6 }]}
+              style={[estilos.botao, { backgroundColor: cores.primaria, ...cores.sombraCard }, enviando && { opacity: 0.6 }]}
               onPress={() => tentar()}
               disabled={enviando}
             >
-              {enviando ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={estilos.botaoTxt}>Entrar</Text>
-              )}
+              {enviando ? <ActivityIndicator color="#fff" /> : <Text style={estilos.botaoTxt}>Entrar</Text>}
             </TouchableOpacity>
           </View>
         ) : (
           <View style={estilos.form}>
-            <Text style={estilos.escolhaTitulo}>Escolha a empresa</Text>
-            <Text style={estilos.escolhaSub}>
-              Seu acesso esta vinculado a mais de uma empresa.
+            <Text style={[estilos.escolhaTitulo, { color: cores.texto }]}>Escolha a empresa</Text>
+            <Text style={[estilos.escolhaSub, { color: cores.textoFraco }]}>
+              Seu acesso está vinculado a mais de uma empresa.
             </Text>
 
             {empresas!.map((e) => (
               <TouchableOpacity
                 key={e.empresa}
-                style={estilos.empresaItem}
+                style={[estilos.empresaItem, { backgroundColor: cores.superficie, borderColor: cores.borda }]}
                 onPress={() => tentar(e.empresa)}
                 disabled={enviando}
               >
                 <View style={{ flex: 1 }}>
-                  <Text style={estilos.empresaNome}>{e.empresa.toUpperCase()}</Text>
-                  <Text style={estilos.empresaDono}>{e.nome}</Text>
+                  <Text style={[estilos.empresaNome, { color: cores.texto }]}>{e.empresa.toUpperCase()}</Text>
+                  <Text style={[estilos.empresaDono, { color: cores.textoFraco }]}>{e.nome}</Text>
                 </View>
-                <Text style={estilos.empresaSeta}>›</Text>
+                <Text style={[estilos.empresaSeta, { color: cores.primaria }]}>›</Text>
               </TouchableOpacity>
             ))}
 
             {enviando ? (
-              <ActivityIndicator color={theme.cores.primaria} style={{ marginTop: theme.espaco(2) }} />
+              <ActivityIndicator color={cores.primaria} style={{ marginTop: theme.espaco(2) }} />
             ) : null}
-            {erro ? <Text style={estilos.erro}>{erro}</Text> : null}
+            {erro ? <Text style={[estilos.erro, { color: cores.primaria }]}>{erro}</Text> : null}
 
             <TouchableOpacity
               style={estilos.voltar}
@@ -142,7 +137,7 @@ export default function Login() {
               }}
               disabled={enviando}
             >
-              <Text style={estilos.voltarTxt}>Voltar</Text>
+              <Text style={[estilos.voltarTxt, { color: cores.textoFraco }]}>Voltar</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -152,77 +147,58 @@ export default function Login() {
 }
 
 const estilos = StyleSheet.create({
-  container: { flex: 1, backgroundColor: theme.cores.fundo },
   scroll: { paddingHorizontal: theme.espaco(3), paddingBottom: theme.espaco(6) },
   marca: { alignItems: "center", marginBottom: theme.espaco(5) },
   logo: {
     width: 76,
     height: 76,
     borderRadius: theme.raio.lg,
-    backgroundColor: theme.cores.primaria,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: theme.espaco(2),
-    ...theme.sombra.card,
   },
-  logoTxt: { color: "#fff", fontSize: 28, fontWeight: "900", letterSpacing: 1 },
-  titulo: { color: theme.cores.texto, fontSize: theme.fonte.titulo, fontWeight: "800" },
-  subtitulo: { color: theme.cores.textoFraco, fontSize: theme.fonte.corpo, marginTop: 4 },
+  logoTxt: { color: "#fff", fontSize: 28, fontFamily: theme.familia.extrabold, letterSpacing: 1 },
+  titulo: { fontSize: theme.fonte.titulo, fontFamily: theme.familia.extrabold },
+  subtitulo: { fontSize: theme.fonte.corpo, marginTop: 4, fontFamily: theme.familia.regular },
   form: { gap: theme.espaco(1) },
   label: {
-    color: theme.cores.textoFraco,
     fontSize: theme.fonte.pequeno,
-    fontWeight: "600",
+    fontFamily: theme.familia.semibold,
     marginTop: theme.espaco(2),
     marginBottom: theme.espaco(0.5),
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   input: {
-    backgroundColor: theme.cores.superficie2,
     borderWidth: 1,
-    borderColor: theme.cores.borda,
     borderRadius: theme.raio.md,
     paddingHorizontal: theme.espaco(2),
     paddingVertical: theme.espaco(1.75),
-    color: theme.cores.texto,
     fontSize: theme.fonte.corpo,
+    fontFamily: theme.familia.regular,
   },
-  erro: { color: theme.cores.primaria, fontSize: theme.fonte.corpo, marginTop: theme.espaco(1) },
+  erro: { fontSize: theme.fonte.corpo, marginTop: theme.espaco(1), fontFamily: theme.familia.medio },
   botao: {
-    backgroundColor: theme.cores.primaria,
     borderRadius: theme.raio.md,
     paddingVertical: theme.espaco(2),
     alignItems: "center",
     marginTop: theme.espaco(3),
-    ...theme.sombra.card,
   },
-  botaoTxt: { color: "#fff", fontSize: theme.fonte.corpo, fontWeight: "800" },
-  escolhaTitulo: {
-    color: theme.cores.texto,
-    fontSize: theme.fonte.secao,
-    fontWeight: "800",
-    marginBottom: theme.espaco(0.5),
-  },
-  escolhaSub: {
-    color: theme.cores.textoFraco,
-    fontSize: theme.fonte.corpo,
-    marginBottom: theme.espaco(2),
-  },
+  botaoTxt: { color: "#fff", fontSize: theme.fonte.corpo, fontFamily: theme.familia.extrabold },
+  escolhaTitulo: { fontSize: theme.fonte.secao, fontFamily: theme.familia.extrabold, marginBottom: theme.espaco(0.5) },
+  escolhaSub: { fontSize: theme.fonte.corpo, marginBottom: theme.espaco(2), fontFamily: theme.familia.regular },
   empresaItem: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: theme.cores.superficie,
     borderWidth: 1,
-    borderColor: theme.cores.borda,
     borderRadius: theme.raio.md,
     paddingVertical: theme.espaco(2),
     paddingHorizontal: theme.espaco(2),
     marginBottom: theme.espaco(1.5),
   },
-  empresaNome: { color: theme.cores.texto, fontSize: theme.fonte.corpo, fontWeight: "800" },
-  empresaDono: { color: theme.cores.textoFraco, fontSize: theme.fonte.pequeno, marginTop: 2 },
-  empresaSeta: { color: theme.cores.primaria, fontSize: 28, fontWeight: "800" },
+  empresaNome: { fontSize: theme.fonte.corpo, fontFamily: theme.familia.extrabold },
+  empresaDono: { fontSize: theme.fonte.pequeno, marginTop: 2, fontFamily: theme.familia.regular },
+  empresaSeta: { fontSize: 28, fontFamily: theme.familia.extrabold },
   voltar: { alignItems: "center", marginTop: theme.espaco(2) },
-  voltarTxt: { color: theme.cores.textoFraco, fontSize: theme.fonte.corpo, fontWeight: "600" },
+  voltarTxt: { fontSize: theme.fonte.corpo, fontFamily: theme.familia.semibold },
 });

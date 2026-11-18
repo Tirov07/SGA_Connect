@@ -1,7 +1,8 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { Text, StyleSheet } from "react-native";
 import { Card } from "./Card";
 import { theme } from "../theme";
+import { useTema } from "../tema";
 
 type Props = {
   rotulo: string;
@@ -12,41 +13,36 @@ type Props = {
 
 /** Card de indicador (numero grande + rotulo), cara de dashboard. */
 export function StatCard({ rotulo, valor, cor, legenda }: Props) {
+  const { cores } = useTema();
   return (
     <Card style={estilos.card}>
-      <Text style={estilos.rotulo} numberOfLines={1}>
+      <Text style={[estilos.rotulo, { color: cores.textoFraco }]} numberOfLines={1}>
         {rotulo}
       </Text>
-      <Text style={[estilos.valor, cor ? { color: cor } : null]} numberOfLines={1} adjustsFontSizeToFit>
+      <Text
+        style={[estilos.valor, { color: cor ?? cores.texto }]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+      >
         {valor}
       </Text>
-      {legenda ? <Text style={estilos.legenda}>{legenda}</Text> : null}
+      {legenda ? <Text style={[estilos.legenda, { color: cores.textoApagado }]}>{legenda}</Text> : null}
     </Card>
   );
 }
 
 const estilos = StyleSheet.create({
-  card: {
-    flex: 1,
-    minHeight: 112,
-    justifyContent: "space-between",
-  },
+  card: { flex: 1, minHeight: 112, justifyContent: "space-between" },
   rotulo: {
-    color: theme.cores.textoFraco,
     fontSize: theme.fonte.pequeno,
     fontFamily: theme.familia.semibold,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   valor: {
-    color: theme.cores.texto,
     fontSize: theme.fonte.numeroCard,
     fontFamily: theme.familia.extrabold,
     marginTop: theme.espaco(1),
   },
-  legenda: {
-    color: theme.cores.textoApagado,
-    fontSize: theme.fonte.pequeno,
-    marginTop: theme.espaco(0.5),
-  },
+  legenda: { fontSize: theme.fonte.pequeno, marginTop: theme.espaco(0.5) },
 });

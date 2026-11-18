@@ -1,10 +1,19 @@
 import React from "react";
 import { View, StyleSheet, ViewProps } from "react-native";
 import { theme } from "../theme";
+import { useTema } from "../tema";
 
 export function Card({ style, children, ...rest }: ViewProps) {
+  const { cores } = useTema();
   return (
-    <View style={[estilos.card, style]} {...rest}>
+    <View
+      style={[
+        estilos.card,
+        { backgroundColor: cores.superficie, borderColor: cores.borda, ...cores.sombraCard },
+        style,
+      ]}
+      {...rest}
+    >
       {children}
     </View>
   );
@@ -12,11 +21,8 @@ export function Card({ style, children, ...rest }: ViewProps) {
 
 const estilos = StyleSheet.create({
   card: {
-    backgroundColor: theme.cores.superficie,
     borderRadius: theme.raio.lg,
     borderWidth: 1,
-    borderColor: theme.cores.borda,
     padding: theme.espaco(2),
-    ...theme.sombra.card,
   },
 });
