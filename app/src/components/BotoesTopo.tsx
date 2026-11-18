@@ -62,8 +62,8 @@ export function BotoesTopo() {
         <TouchableOpacity style={estilos.backdrop} activeOpacity={1} onPress={() => setAberto(false)}>
           <View style={[estilos.folha, { backgroundColor: cores.superficie, borderColor: cores.borda }]}>
             <Text style={[estilos.folhaTitulo, { color: cores.texto }]}>Trocar empresa</Text>
-            {sessao?.empresas.map((e) => {
-              const ativa = e.empresa === sessao.empresa;
+            {(sessao?.empresas ?? []).map((e) => {
+              const ativa = e.empresa === sessao?.empresa;
               return (
                 <TouchableOpacity
                   key={e.empresa}

@@ -42,6 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const salvo = await armazenamento.ler(CHAVE);
         if (salvo) {
           const s = JSON.parse(salvo) as Sessao;
+          if (!Array.isArray(s.empresas)) s.empresas = []; // sessao antiga sem o campo
           if (new Date(s.expiraEm).getTime() > Date.now()) setSessao(s);
           else await armazenamento.apagar(CHAVE);
         }
