@@ -34,14 +34,14 @@ const estilos = StyleSheet.create({
   rotulo: {
     color: theme.cores.textoFraco,
     fontSize: theme.fonte.pequeno,
-    fontWeight: "600",
+    fontFamily: theme.familia.semibold,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   valor: {
     color: theme.cores.texto,
     fontSize: theme.fonte.numeroCard,
-    fontWeight: "800",
+    fontFamily: theme.familia.extrabold,
     marginTop: theme.espaco(1),
   },
   legenda: {

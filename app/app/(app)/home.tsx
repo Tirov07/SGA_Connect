@@ -15,15 +15,7 @@ import { theme } from "../../src/theme";
 import { moeda, horaCurta } from "../../src/format";
 import { StatCard } from "../../src/components/StatCard";
 import { Card } from "../../src/components/Card";
-import { BotaoMenu } from "../../src/components/BotaoMenu";
 import { GraficoVendas } from "../../src/components/GraficoVendas";
-
-const MENU = [
-  { chave: "osv", rotulo: "OSv", icone: "🔧" },
-  { chave: "financeiro", rotulo: "Financeiro", icone: "💰" },
-  { chave: "estoque", rotulo: "Estoque", icone: "📦" },
-  { chave: "tecnico", rotulo: "Dep. Técnico", icone: "🛠️" },
-];
 
 export default function Home() {
   const { sessao, sair } = useAuth();
@@ -64,7 +56,7 @@ export default function Home() {
       style={estilos.container}
       contentContainerStyle={{
         paddingTop: insets.top + theme.espaco(2),
-        paddingBottom: insets.bottom + theme.espaco(4),
+        paddingBottom: insets.bottom + theme.espaco(12), // espaco para a tab bar
         paddingHorizontal: theme.espaco(2.5),
       }}
       refreshControl={
@@ -86,13 +78,6 @@ export default function Home() {
         <TouchableOpacity style={estilos.sair} onPress={sair}>
           <Text style={estilos.sairTxt}>Sair</Text>
         </TouchableOpacity>
-      </View>
-
-      {/* Menu principal */}
-      <View style={estilos.menu}>
-        {MENU.map((m) => (
-          <BotaoMenu key={m.chave} rotulo={m.rotulo} icone={m.icone} />
-        ))}
       </View>
 
       {carregando ? (
@@ -147,11 +132,11 @@ const estilos = StyleSheet.create({
     alignItems: "center",
     marginBottom: theme.espaco(2),
   },
-  ola: { color: theme.cores.texto, fontSize: theme.fonte.titulo, fontWeight: "800" },
+  ola: { color: theme.cores.texto, fontSize: theme.fonte.titulo, fontFamily: theme.familia.extrabold },
   empresa: {
     color: theme.cores.primaria,
     fontSize: theme.fonte.pequeno,
-    fontWeight: "700",
+    fontFamily: theme.familia.bold,
     letterSpacing: 1,
     marginTop: 2,
   },
@@ -163,10 +148,9 @@ const estilos = StyleSheet.create({
     borderColor: theme.cores.borda,
     backgroundColor: theme.cores.superficie,
   },
-  sairTxt: { color: theme.cores.textoFraco, fontWeight: "700", fontSize: theme.fonte.pequeno },
-  menu: { flexDirection: "row", gap: theme.espaco(1.5), marginBottom: theme.espaco(2.5) },
+  sairTxt: { color: theme.cores.textoFraco, fontFamily: theme.familia.bold, fontSize: theme.fonte.pequeno },
   graficoCard: { marginBottom: theme.espaco(2) },
-  secaoTitulo: { color: theme.cores.texto, fontSize: theme.fonte.secao, fontWeight: "800" },
+  secaoTitulo: { color: theme.cores.texto, fontSize: theme.fonte.secao, fontFamily: theme.familia.extrabold },
   secaoSub: {
     color: theme.cores.textoFraco,
     fontSize: theme.fonte.pequeno,

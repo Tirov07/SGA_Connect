@@ -7,8 +7,8 @@ import { theme } from "../theme";
 import { moeda } from "../format";
 import { VendaDia } from "../api";
 
-const COR_PECA = "#3B82F6"; // azul
-const COR_SERVICO = theme.cores.primaria; // vermelho
+const COR_PECA = theme.grafico.peca; // ambar
+const COR_SERVICO = theme.grafico.servico; // teal
 
 const ALTURA = 180; // altura da area das barras
 const LARGURA_BARRA = 26;
@@ -161,16 +161,16 @@ const estilos = StyleSheet.create({
     alignSelf: "flex-start",
     minWidth: 180,
   },
-  tipData: { color: theme.cores.textoFraco, fontSize: theme.fonte.pequeno, fontWeight: "700" },
+  tipData: { color: theme.cores.textoFraco, fontSize: theme.fonte.pequeno, fontFamily: theme.familia.bold },
   tipTotal: {
     color: theme.cores.texto,
     fontSize: theme.fonte.secao,
-    fontWeight: "800",
+    fontFamily: theme.familia.extrabold,
     marginVertical: 2,
   },
   tipLinha: { flexDirection: "row", alignItems: "center", marginTop: 4 },
   tipLabel: { color: theme.cores.textoFraco, fontSize: theme.fonte.pequeno, flex: 1, marginLeft: 6 },
-  tipValor: { color: theme.cores.texto, fontSize: theme.fonte.pequeno, fontWeight: "700" },
+  tipValor: { color: theme.cores.texto, fontSize: theme.fonte.pequeno, fontFamily: theme.familia.bold },
   dica: { color: theme.cores.textoApagado, fontSize: theme.fonte.pequeno, fontStyle: "italic" },
   legenda: { flexDirection: "row", gap: theme.espaco(2), marginBottom: theme.espaco(1) },
   legItem: { flexDirection: "row", alignItems: "center" },
