@@ -58,6 +58,34 @@ export type Vencidos = {
   totalPagar: number;
 };
 
+export type Banco = { numeroBanco: number; nome: string };
+
+export type Lancamento = {
+  data: string; // "AAAA-MM-DD"
+  descricao: string;
+  valor: number;
+  entrada: boolean;
+};
+
+export type Extrato = {
+  inicio: string;
+  fim: string;
+  totalEntradas: number;
+  totalSaidas: number;
+  resultado: number;
+  lancamentos: Lancamento[];
+};
+
+export type PontoSaldo = { data: string; saldo: number };
+
+export type SaldoSerie = {
+  numeroBanco: number;
+  inicio: string;
+  fim: string;
+  saldoAtual: number;
+  pontos: PontoSaldo[];
+};
+
 class ApiError extends Error {
   constructor(public status: number, message: string) {
     super(message);
@@ -134,6 +162,30 @@ export const api = {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ empresa }),
+    });
+    return tratar(resp);
+  },
+
+  async bancos(token: string): Promise<Banco[]> {
+    const resp = await fetch(`${API_URL}/financeiro/bancos`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return tratar(resp);
+  },
+
+  /** Extrato consolidado de 1+ bancos. numeros: lista de NumeroBanco. */
+  async extrato(token: string, numeros: number[], dias = 90): Promise<Extrato> {
+    const bancos = numeros.join(",");
+    const resp = await fetch(`${API_URL}/financeiro/extrato?bancos=${bancos}&dias=${dias}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return tratar(resp);
+  },
+
+  /** Serie de saldo acumulado de UM banco (grafico estilo bolsa). */
+  async saldo(token: string, numeroBanco: number, dias = 90): Promise<SaldoSerie> {
+    const resp = await fetch(`${API_URL}/financeiro/saldo?banco=${numeroBanco}&dias=${dias}`, {
+      headers: { Authorization: `Bearer ${token}` },
     });
     return tratar(resp);
   },

@@ -71,3 +71,28 @@ public sealed record VencidosResponse(
     decimal TotalReceber,
     int QtdPagar,
     decimal TotalPagar);
+
+// ---------------- Bancos / extrato (Bloco B) ----------------
+
+public sealed record BancoDto(int NumeroBanco, string Nome);
+
+public sealed record LancamentoDto(string Data, string Descricao, decimal Valor, bool Entrada);
+
+/// <summary>Extrato consolidado de 1+ bancos num periodo.</summary>
+public sealed record ExtratoResponse(
+    string Inicio,
+    string Fim,
+    decimal TotalEntradas,
+    decimal TotalSaidas,
+    decimal Resultado,
+    IReadOnlyList<LancamentoDto> Lancamentos);
+
+public sealed record PontoSaldoDto(string Data, decimal Saldo);
+
+/// <summary>Serie de saldo acumulado de um banco (grafico estilo bolsa).</summary>
+public sealed record SaldoSerieResponse(
+    int NumeroBanco,
+    string Inicio,
+    string Fim,
+    decimal SaldoAtual,
+    IReadOnlyList<PontoSaldoDto> Pontos);
