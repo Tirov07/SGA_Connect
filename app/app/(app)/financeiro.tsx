@@ -488,14 +488,26 @@ function Extrato({
           contentContainerStyle={{ paddingHorizontal: theme.espaco(2.5), paddingBottom: base + theme.espaco(12) }}
           ItemSeparatorComponent={() => <View style={{ height: theme.espaco(1) }} />}
           renderItem={({ item }) => (
-            <Card style={estilos.lanc}>
-              <View style={{ flex: 1 }}>
-                <Text style={[estilos.lancDesc, { color: cores.texto }]}>{item.descricao}</Text>
-                <Text style={[estilos.lancData, { color: cores.textoFraco }]}>{dataBr(item.data)}</Text>
+            <Card style={estilos.lancCard}>
+              <View style={estilos.lancTopo}>
+                <Text style={[estilos.lancNome, { color: cores.texto }]} numberOfLines={1}>
+                  {item.nome || item.descricao}
+                </Text>
+                <Text style={[estilos.lancVal, { color: item.entrada ? cores.positivo : cores.negativo }]}>
+                  {item.entrada ? "+" : "−"} {moeda(item.valor)}
+                </Text>
               </View>
-              <Text style={[estilos.lancVal, { color: item.entrada ? cores.positivo : cores.negativo }]}>
-                {item.entrada ? "+" : "−"} {moeda(item.valor)}
-              </Text>
+              <View style={estilos.lancMeta}>
+                <Text style={[estilos.lancMetaTxt, { color: cores.textoFraco }]}>
+                  {item.descricao} · Nº {item.numero || "—"}
+                </Text>
+                <Text style={[estilos.lancMetaTxt, { color: cores.textoFraco }]}>{dataBr(item.data)}</Text>
+              </View>
+              {item.observacao ? (
+                <Text style={[estilos.lancObs, { color: cores.textoApagado }]} numberOfLines={2}>
+                  {item.observacao}
+                </Text>
+              ) : null}
             </Card>
           )}
         />
@@ -593,8 +605,11 @@ const estilos = StyleSheet.create({
   },
   totalCol: { alignItems: "center" },
   totalVal: { fontSize: theme.fonte.corpo, fontFamily: theme.familia.extrabold, marginTop: 2 },
-  lanc: { flexDirection: "row", alignItems: "center", padding: theme.espaco(1.5) },
-  lancDesc: { fontSize: theme.fonte.corpo, fontFamily: theme.familia.bold },
-  lancData: { fontSize: theme.fonte.pequeno, marginTop: 2 },
+  lancCard: { padding: theme.espaco(1.5) },
+  lancTopo: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: theme.espaco(1) },
+  lancNome: { flex: 1, fontSize: theme.fonte.corpo, fontFamily: theme.familia.bold },
   lancVal: { fontSize: theme.fonte.corpo, fontFamily: theme.familia.extrabold },
+  lancMeta: { flexDirection: "row", justifyContent: "space-between", marginTop: 4, gap: theme.espaco(1) },
+  lancMetaTxt: { fontSize: theme.fonte.pequeno },
+  lancObs: { fontSize: theme.fonte.pequeno, marginTop: 4, fontStyle: "italic" },
 });

@@ -63,6 +63,9 @@ export type Banco = { numeroBanco: number; nome: string };
 export type Lancamento = {
   data: string; // "AAAA-MM-DD"
   descricao: string;
+  nome: string;
+  numero: string;
+  observacao: string;
   valor: number;
   entrada: boolean;
 };
