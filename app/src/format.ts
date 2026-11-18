@@ -38,3 +38,14 @@ export function somarMes(ano: number, mes: number, delta: number): { ano: number
 export function chaveMes(ano: number, mes: number): string {
   return `${ano}-${String(mes).padStart(2, "0")}`;
 }
+
+/** "AAAA-MM-DD" -> "13/08" */
+export function diaMes(iso: string): string {
+  const [, m, d] = iso.split("-");
+  return `${d}/${m}`;
+}
+
+/** "AAAA-MM-DD" -> "2026-11-17" do objeto Date local. */
+export function chaveDia(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}

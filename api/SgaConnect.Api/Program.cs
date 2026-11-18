@@ -522,4 +522,91 @@ app.MapGet("/financeiro/saldo", (HttpContext ctx, DescobridorEmpresas descobrido
         Pontos: pontos.Select(p => new PontoSaldoDto(p.Data.ToString("yyyy-MM-dd"), p.Saldo)).ToList()));
 }).RequireAuthorization();
 
+// ---------------- OSv ----------------
+
+// Helper: monta a resposta de lista de OS a partir dos itens do repositorio.
+OsListaResponse MontarOsLista(IReadOnlyList<RepositorioOsv.OsItem> itens)
+{
+    var dtos = itens.Select(o => new OsItemDto(
+        o.NumOs, o.Cliente, o.Placa, o.Operacao, o.ComLaudo,
+        o.Abertura?.ToString("yyyy-MM-dd"), o.Fechamento?.ToString("yyyy-MM-dd"),
+        o.Peca, o.Servico, o.Total)).ToList();
+    return new OsListaResponse(
+        dtos.Count, dtos.Sum(d => d.Peca), dtos.Sum(d => d.Servico), dtos.Sum(d => d.Total), dtos);
+}
+
+// Parte 1a: OS em aberto (DataFechamento vazia, nao cancelada).
+app.MapGet("/osv/abertas", (HttpContext ctx, DescobridorEmpresas descobridor) =>
+{
+    var erro = ResolverContexto(ctx, descobridor, out var empresa, out var codEmpresa);
+    if (erro is not null) return erro;
+    var repo = new RepositorioOsv(new LeitorSga(empresa!.CaminhoBanco));
+    return Results.Ok(MontarOsLista(repo.Abertas(codEmpresa)));
+}).RequireAuthorization();
+
+// Parte 1b: OS fechadas nos ultimos N dias (default 7), por DataFechamento. ?dias=7
+app.MapGet("/osv/fechadas", (HttpContext ctx, DescobridorEmpresas descobridor, int? dias) =>
+{
+    var erro = ResolverContexto(ctx, descobridor, out var empresa, out var codEmpresa);
+    if (erro is not null) return erro;
+    var n = Math.Clamp(dias ?? 7, 1, 180);
+    var repo = new RepositorioOsv(new LeitorSga(empresa!.CaminhoBanco));
+    return Results.Ok(MontarOsLista(repo.FechadasUltimosDias(codEmpresa, n)));
+}).RequireAuthorization();
+
+// Parte 2: grafico de OSv ABERTAS por dia, com quebra com/sem laudo ao tocar. ?dias=10
+app.MapGet("/osv/aberturas", (HttpContext ctx, DescobridorEmpresas descobridor, int? dias) =>
+{
+    var erro = ResolverContexto(ctx, descobridor, out var empresa, out var codEmpresa);
+    if (erro is not null) return erro;
+    var n = Math.Clamp(dias ?? 10, 1, 60);
+    var repo = new RepositorioOsv(new LeitorSga(empresa!.CaminhoBanco));
+    var lista = repo.AberturasPorDia(codEmpresa, n)
+        .Select(d => new OsAberturaDiaDto(d.Data.ToString("yyyy-MM-dd"), d.ComLaudo, d.SemLaudo, d.Total))
+        .ToList();
+    return Results.Ok(new OsAberturasResponse(
+        lista.Count, lista.Sum(d => d.ComLaudo), lista.Sum(d => d.SemLaudo), lista));
+}).RequireAuthorization();
+
+// Parte 3: resumo financeiro por data de FECHAMENTO.
+//   ?periodo=dia&data=AAAA-MM-DD   -> um unico dia
+//   ?periodo=mes&mes=AAAA-MM       -> um mes inteiro (default: mes atual)
+app.MapGet("/osv/resumo", (HttpContext ctx, DescobridorEmpresas descobridor, string? periodo, string? data, string? mes) =>
+{
+    var erro = ResolverContexto(ctx, descobridor, out var empresa, out var codEmpresa);
+    if (erro is not null) return erro;
+
+    DateTime inicio, fim;
+    if (string.Equals(periodo, "dia", StringComparison.OrdinalIgnoreCase))
+    {
+        if (!DateTime.TryParse(data, out var d))
+            return Results.BadRequest(new { erro = "Informe ?data=AAAA-MM-DD para periodo=dia." });
+        inicio = d.Date;
+        fim = inicio.AddDays(1);
+    }
+    else
+    {
+        var mm = ParseMes(mes);
+        if (mm is null) return Results.BadRequest(new { erro = "Parametro 'mes' invalido. Use AAAA-MM." });
+        inicio = new DateTime(mm.Value.ano, mm.Value.mes, 1);
+        fim = inicio.AddMonths(1);
+    }
+
+    var repo = new RepositorioOsv(new LeitorSga(empresa!.CaminhoBanco));
+    var linhas = repo.ResumoPorFechamento(codEmpresa, inicio, fim)
+        .Select(l => new OsResumoLinhaDto(
+            l.NumOs, l.Cliente, l.NotaPeca, l.NotaServico,
+            l.Fechamento?.ToString("yyyy-MM-dd"), l.Peca, l.Servico, l.Total))
+        .ToList();
+
+    return Results.Ok(new OsResumoResponse(
+        Inicio: inicio.ToString("yyyy-MM-dd"),
+        Fim: fim.AddDays(-1).ToString("yyyy-MM-dd"),
+        Quantidade: linhas.Count,
+        TotalPeca: linhas.Sum(l => l.Peca),
+        TotalServico: linhas.Sum(l => l.Servico),
+        TotalGeral: linhas.Sum(l => l.Total),
+        Linhas: linhas));
+}).RequireAuthorization();
+
 app.Run();
