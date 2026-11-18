@@ -8,6 +8,8 @@ type Sessao = {
   empresa: string;
   codEmpresa: number;
   expiraEm: string;
+  /** Empresas do usuario (para o botao Trocar empresa). >1 = mostra o botao. */
+  empresas: EmpresaDoUsuario[];
 };
 
 /**
@@ -22,6 +24,7 @@ type AuthContexto = {
   sessao: Sessao | null;
   carregando: boolean;
   entrar: (login: string, senha: string, empresa?: string) => Promise<ResultadoEntrar>;
+  trocarEmpresa: (empresa: string) => Promise<void>;
   sair: () => Promise<void>;
 };
 
@@ -65,17 +68,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!r.token || !r.empresa || r.codEmpresa == null || !r.expiraEm) {
       throw new Error("Resposta de login invalida.");
     }
+    await criarSessao(r);
+    return { tipo: "ok" };
+  }
 
+  // Monta a sessao a partir da resposta de login/troca e busca a lista de empresas do CPF.
+  async function criarSessao(r: LoginResposta) {
+    let empresas: EmpresaDoUsuario[] = [];
+    try {
+      empresas = await api.empresasDoUsuario(r.token!);
+    } catch {
+      /* se falhar, segue sem o botao de trocar */
+    }
     const s: Sessao = {
-      token: r.token,
+      token: r.token!,
       nome: r.nome ?? "",
-      empresa: r.empresa,
-      codEmpresa: r.codEmpresa,
-      expiraEm: r.expiraEm,
+      empresa: r.empresa!,
+      codEmpresa: r.codEmpresa!,
+      expiraEm: r.expiraEm!,
+      empresas,
     };
     await armazenamento.guardar(CHAVE, JSON.stringify(s));
     setSessao(s);
-    return { tipo: "ok" };
+  }
+
+  async function trocarEmpresa(empresa: string) {
+    if (!sessao) return;
+    const r = await api.trocarEmpresa(sessao.token, empresa);
+    if (!r.token || !r.empresa || r.codEmpresa == null || !r.expiraEm)
+      throw new Error("Falha ao trocar de empresa.");
+    // Mantem a lista de empresas que ja tinhamos (evita nova varredura).
+    const s: Sessao = {
+      token: r.token,
+      nome: r.nome ?? sessao.nome,
+      empresa: r.empresa,
+      codEmpresa: r.codEmpresa,
+      expiraEm: r.expiraEm,
+      empresas: sessao.empresas,
+    };
+    await armazenamento.guardar(CHAVE, JSON.stringify(s));
+    setSessao(s);
   }
 
   async function sair() {
@@ -84,7 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <Ctx.Provider value={{ sessao, carregando, entrar, sair }}>
+    <Ctx.Provider value={{ sessao, carregando, entrar, trocarEmpresa, sair }}>
       {children}
     </Ctx.Provider>
   );

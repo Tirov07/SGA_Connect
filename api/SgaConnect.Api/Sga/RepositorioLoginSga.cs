@@ -37,4 +37,23 @@ public sealed class RepositorioLoginSga
 
         return achados.FirstOrDefault();
     }
+
+    /// <summary>
+    /// Verifica, SEM senha, se o CPF e um usuario ATIVO naquele banco (empresa).
+    /// Usado na troca de empresa: a identidade ja foi provada pelo JWT; aqui so
+    /// confirmamos que o CPF existe e esta ativo na empresa de destino.
+    /// </summary>
+    public UsuarioSga? BuscarPorCpf(LeitorSga leitor, string cpf)
+    {
+        const string sql = """
+            SELECT TOP 1 CodEmpresa, CPF, Nome
+            FROM EmpresaxUsuariosConn
+            WHERE CPF = ? AND Ativo <> 0
+            """;
+        return leitor.Consultar(sql, r => new UsuarioSga(
+            CodEmpresa: Convert.ToInt32(r["CodEmpresa"]),
+            Cpf: r["CPF"]?.ToString() ?? "",
+            Nome: r["Nome"]?.ToString() ?? ""
+        ), cpf.Trim()).FirstOrDefault();
+    }
 }

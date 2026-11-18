@@ -120,6 +120,23 @@ export const api = {
     });
     return tratar(resp);
   },
+
+  async empresasDoUsuario(token: string): Promise<EmpresaDoUsuario[]> {
+    const resp = await fetch(`${API_URL}/auth/empresas-do-usuario`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return tratar(resp);
+  },
+
+  /** Troca de empresa sem senha: devolve um novo token para a empresa de destino. */
+  async trocarEmpresa(token: string, empresa: string): Promise<LoginResposta> {
+    const resp = await fetch(`${API_URL}/auth/trocar-empresa`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ empresa }),
+    });
+    return tratar(resp);
+  },
 };
 
 export { ApiError };

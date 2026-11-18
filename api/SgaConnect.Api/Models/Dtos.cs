@@ -9,6 +9,9 @@ public sealed record LoginRequest(string Login, string Senha, string? Empresa = 
 /// <summary>Uma empresa onde o CPF+senha foram aceitos (para o usuario escolher).</summary>
 public sealed record EmpresaDoUsuario(string Empresa, string Nome, int CodEmpresa);
 
+/// <summary>Troca de empresa (sem senha): empresa de destino do mesmo CPF.</summary>
+public sealed record TrocarEmpresaRequest(string Empresa);
+
 /// <summary>
 /// Resposta do login. Dois formatos, nunca os dois ao mesmo tempo:
 ///  - sucesso: Token preenchido (login resolvido numa unica empresa);
