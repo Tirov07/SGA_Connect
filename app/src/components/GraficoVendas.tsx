@@ -4,6 +4,7 @@ import Svg, { Rect } from "react-native-svg";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
 import { theme } from "../theme";
+import { useTema } from "../tema";
 import { moeda } from "../format";
 import { VendaDia } from "../api";
 
@@ -22,18 +23,15 @@ function diaMes(iso: string): string {
 }
 
 /**
- * Grafico de barras EMPILHADAS (azul = peca, vermelho = servico) dos dias com movimento.
+ * Grafico de barras EMPILHADAS (ambar = peca, teal = servico) dos dias com movimento.
  * Pressionar/arrastar sobre uma coluna destaca ela e mostra um tooltip com o total do dia
  * e a quebra peca/servico. As demais colunas ficam esmaecidas enquanto se interage.
  */
 export function GraficoVendas({ dias }: { dias: VendaDia[] }) {
+  const { cores } = useTema();
   const [sel, setSel] = useState<number | null>(null);
 
-  const maxTotal = useMemo(
-    () => Math.max(1, ...dias.map((d) => d.total)),
-    [dias]
-  );
-
+  const maxTotal = useMemo(() => Math.max(1, ...dias.map((d) => d.total)), [dias]);
   const larguraConteudo = dias.length * (LARGURA_BARRA + GAP) + GAP;
 
   // Gesto: toque longo + arraste; calcula a coluna sob o dedo pela posicao X.
@@ -53,37 +51,35 @@ export function GraficoVendas({ dias }: { dias: VendaDia[] }) {
 
   return (
     <View>
-      {/* Tooltip (aparece ao segurar numa coluna) */}
+      {/* Area do tooltip: reserva altura fixa (sem texto de dica) para o layout nao pular */}
       <View style={estilos.tipArea}>
         {selecionado ? (
-          <View style={estilos.tip}>
-            <Text style={estilos.tipData}>{diaMes(selecionado.data)}</Text>
-            <Text style={estilos.tipTotal}>{moeda(selecionado.total)}</Text>
+          <View style={[estilos.tip, { backgroundColor: cores.superficie2, borderColor: cores.borda }]}>
+            <Text style={[estilos.tipData, { color: cores.textoFraco }]}>{diaMes(selecionado.data)}</Text>
+            <Text style={[estilos.tipTotal, { color: cores.texto }]}>{moeda(selecionado.total)}</Text>
             <View style={estilos.tipLinha}>
               <View style={[estilos.bolinha, { backgroundColor: COR_PECA }]} />
-              <Text style={estilos.tipLabel}>Peça</Text>
-              <Text style={estilos.tipValor}>{moeda(selecionado.peca)}</Text>
+              <Text style={[estilos.tipLabel, { color: cores.textoFraco }]}>Peça</Text>
+              <Text style={[estilos.tipValor, { color: cores.texto }]}>{moeda(selecionado.peca)}</Text>
             </View>
             <View style={estilos.tipLinha}>
               <View style={[estilos.bolinha, { backgroundColor: COR_SERVICO }]} />
-              <Text style={estilos.tipLabel}>Serviço</Text>
-              <Text style={estilos.tipValor}>{moeda(selecionado.servico)}</Text>
+              <Text style={[estilos.tipLabel, { color: cores.textoFraco }]}>Serviço</Text>
+              <Text style={[estilos.tipValor, { color: cores.texto }]}>{moeda(selecionado.servico)}</Text>
             </View>
           </View>
-        ) : (
-          <Text style={estilos.dica}>Segure numa barra para ver o detalhe do dia</Text>
-        )}
+        ) : null}
       </View>
 
       {/* Legenda */}
       <View style={estilos.legenda}>
         <View style={estilos.legItem}>
           <View style={[estilos.bolinha, { backgroundColor: COR_PECA }]} />
-          <Text style={estilos.legTxt}>Peça</Text>
+          <Text style={[estilos.legTxt, { color: cores.textoFraco }]}>Peça</Text>
         </View>
         <View style={estilos.legItem}>
           <View style={[estilos.bolinha, { backgroundColor: COR_SERVICO }]} />
-          <Text style={estilos.legTxt}>Serviço</Text>
+          <Text style={[estilos.legTxt, { color: cores.textoFraco }]}>Serviço</Text>
         </View>
       </View>
 
@@ -101,26 +97,10 @@ export function GraficoVendas({ dias }: { dias: VendaDia[] }) {
                 const op = apagado ? 0.3 : 1;
                 return (
                   <React.Fragment key={d.data}>
-                    {/* servico (vermelho) embaixo */}
-                    <Rect
-                      x={x}
-                      y={yServico}
-                      width={LARGURA_BARRA}
-                      height={Math.max(0, hServico)}
-                      rx={3}
-                      fill={COR_SERVICO}
-                      opacity={op}
-                    />
-                    {/* peca (azul) em cima */}
-                    <Rect
-                      x={x}
-                      y={yPeca}
-                      width={LARGURA_BARRA}
-                      height={Math.max(0, hPeca)}
-                      rx={3}
-                      fill={COR_PECA}
-                      opacity={op}
-                    />
+                    {/* servico (teal) embaixo */}
+                    <Rect x={x} y={yServico} width={LARGURA_BARRA} height={Math.max(0, hServico)} rx={3} fill={COR_SERVICO} opacity={op} />
+                    {/* peca (ambar) em cima */}
+                    <Rect x={x} y={yPeca} width={LARGURA_BARRA} height={Math.max(0, hPeca)} rx={3} fill={COR_PECA} opacity={op} />
                   </React.Fragment>
                 );
               })}
@@ -135,7 +115,7 @@ export function GraficoVendas({ dias }: { dias: VendaDia[] }) {
                     {
                       width: LARGURA_BARRA + GAP,
                       marginLeft: i === 0 ? GAP - GAP / 2 : 0,
-                      color: sel === i ? theme.cores.texto : theme.cores.textoApagado,
+                      color: sel === i ? cores.texto : cores.textoApagado,
                     },
                   ]}
                 >
@@ -153,28 +133,20 @@ export function GraficoVendas({ dias }: { dias: VendaDia[] }) {
 const estilos = StyleSheet.create({
   tipArea: { minHeight: 92, justifyContent: "center" },
   tip: {
-    backgroundColor: theme.cores.superficie2,
     borderRadius: theme.raio.md,
     borderWidth: 1,
-    borderColor: theme.cores.borda,
     padding: theme.espaco(1.5),
     alignSelf: "flex-start",
     minWidth: 180,
   },
-  tipData: { color: theme.cores.textoFraco, fontSize: theme.fonte.pequeno, fontFamily: theme.familia.bold },
-  tipTotal: {
-    color: theme.cores.texto,
-    fontSize: theme.fonte.secao,
-    fontFamily: theme.familia.extrabold,
-    marginVertical: 2,
-  },
+  tipData: { fontSize: theme.fonte.pequeno, fontFamily: theme.familia.bold },
+  tipTotal: { fontSize: theme.fonte.secao, fontFamily: theme.familia.extrabold, marginVertical: 2 },
   tipLinha: { flexDirection: "row", alignItems: "center", marginTop: 4 },
-  tipLabel: { color: theme.cores.textoFraco, fontSize: theme.fonte.pequeno, flex: 1, marginLeft: 6 },
-  tipValor: { color: theme.cores.texto, fontSize: theme.fonte.pequeno, fontFamily: theme.familia.bold },
-  dica: { color: theme.cores.textoApagado, fontSize: theme.fonte.pequeno, fontStyle: "italic" },
+  tipLabel: { fontSize: theme.fonte.pequeno, flex: 1, marginLeft: 6 },
+  tipValor: { fontSize: theme.fonte.pequeno, fontFamily: theme.familia.bold },
   legenda: { flexDirection: "row", gap: theme.espaco(2), marginBottom: theme.espaco(1) },
   legItem: { flexDirection: "row", alignItems: "center" },
-  legTxt: { color: theme.cores.textoFraco, fontSize: theme.fonte.pequeno, marginLeft: 6 },
+  legTxt: { fontSize: theme.fonte.pequeno, marginLeft: 6 },
   bolinha: { width: 10, height: 10, borderRadius: 5 },
   rotulo: { fontSize: 10, textAlign: "center", marginTop: 6 },
 });
