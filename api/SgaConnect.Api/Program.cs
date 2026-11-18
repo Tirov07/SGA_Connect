@@ -393,14 +393,15 @@ app.MapGet("/financeiro/pagar", (HttpContext ctx, DescobridorEmpresas descobrido
     return Results.Ok(new TitulosResponse(mm.Value.ano, mm.Value.mes, itens.Count, itens.Sum(i => i.Saldo), itens));
 }).RequireAuthorization();
 
-// Card de vencidos (em aberto com vencimento anterior a hoje): a receber e a pagar.
-app.MapGet("/financeiro/vencidos", (HttpContext ctx, DescobridorEmpresas descobridor) =>
+// Card de vencidos (em aberto, vencidos nos ultimos N meses): a receber e a pagar. ?meses=12
+app.MapGet("/financeiro/vencidos", (HttpContext ctx, DescobridorEmpresas descobridor, int? meses) =>
 {
     var erro = ResolverContexto(ctx, descobridor, out var empresa, out var codEmpresa);
     if (erro is not null) return erro;
 
+    var janela = Math.Clamp(meses ?? 12, 1, 120);
     var repo = new RepositorioFinanceiro(new LeitorSga(empresa!.CaminhoBanco));
-    var v = repo.Vencidos(codEmpresa);
+    var v = repo.Vencidos(codEmpresa, janela);
     return Results.Ok(new VencidosResponse(v.QtdReceber, v.TotalReceber, v.QtdPagar, v.TotalPagar));
 }).RequireAuthorization();
 

@@ -135,7 +135,7 @@ function Painel({
 
       {/* Card de vencidos */}
       <Card style={{ marginBottom: theme.espaco(1.5) }}>
-        <Text style={[estilos.cardTitulo, { color: cores.texto }]}>Vencidos</Text>
+        <Text style={[estilos.cardTitulo, { color: cores.texto }]}>Vencidos (12 meses)</Text>
         {carregandoVenc ? (
           <ActivityIndicator color={cores.primaria} style={{ marginVertical: theme.espaco(1) }} />
         ) : (
