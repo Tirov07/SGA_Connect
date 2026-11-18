@@ -36,7 +36,7 @@ export default function Home() {
     try {
       const [r, v] = await Promise.all([
         api.resumo(sessao.token),
-        api.vendasResumo(sessao.token, 20),
+        api.vendasResumo(sessao.token, 10),
       ]);
       setResumo(r);
       setVendas(v);

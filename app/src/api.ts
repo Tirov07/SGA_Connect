@@ -35,6 +35,29 @@ export type VendasResumo = {
   dias: VendaDia[];
 };
 
+export type Titulo = {
+  nome: string;
+  numero: string;
+  vencimento: string | null; // "AAAA-MM-DD"
+  saldo: number;
+  observacao: string;
+};
+
+export type Titulos = {
+  ano: number;
+  mes: number;
+  quantidade: number;
+  total: number;
+  titulos: Titulo[];
+};
+
+export type Vencidos = {
+  qtdReceber: number;
+  totalReceber: number;
+  qtdPagar: number;
+  totalPagar: number;
+};
+
 class ApiError extends Error {
   constructor(public status: number, message: string) {
     super(message);
@@ -77,6 +100,22 @@ export const api = {
 
   async vendasResumo(token: string, dias = 20): Promise<VendasResumo> {
     const resp = await fetch(`${API_URL}/vendas-resumo?dias=${dias}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return tratar(resp);
+  },
+
+  async vencidos(token: string): Promise<Vencidos> {
+    const resp = await fetch(`${API_URL}/financeiro/vencidos`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return tratar(resp);
+  },
+
+  /** tipo: "receber" | "pagar"; mes: "AAAA-MM" (opcional, default mes atual) */
+  async titulos(token: string, tipo: "receber" | "pagar", mes?: string): Promise<Titulos> {
+    const q = mes ? `?mes=${mes}` : "";
+    const resp = await fetch(`${API_URL}/financeiro/${tipo}${q}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return tratar(resp);

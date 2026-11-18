@@ -335,4 +335,73 @@ app.MapGet("/vendas-resumo", (HttpContext ctx, DescobridorEmpresas descobridor, 
         Dias: lista));
 }).RequireAuthorization();
 
+// ---------------- Financeiro (Bloco A) ----------------
+
+// Helper local: resolve (empresa, codEmpresa) a partir do token; devolve erro pronto se falhar.
+IResult? ResolverContexto(HttpContext ctx, DescobridorEmpresas descobridor,
+    out SgaConnect.Api.Models.EmpresaInfo? empresa, out int codEmpresa)
+{
+    empresa = null; codEmpresa = 0;
+    var empresaChave = ctx.User.FindFirst("empresa")?.Value;
+    var codStr = ctx.User.FindFirst("codEmpresa")?.Value;
+    if (string.IsNullOrWhiteSpace(empresaChave) || !int.TryParse(codStr, out codEmpresa))
+        return Results.Unauthorized();
+    empresa = descobridor.Resolver(empresaChave);
+    if (empresa is null) return Results.NotFound(new { erro = "Empresa nao encontrada." });
+    if (!OperatingSystem.IsWindows())
+        return Results.Json(new { erro = "Leitura do SGA (Access) so no Windows." }, statusCode: 503);
+    return null;
+}
+
+// Mes a partir de ?mes=AAAA-MM; default mes atual. Retorna (ano, mes) ou null se invalido.
+(int ano, int mes)? ParseMes(string? mes)
+{
+    if (string.IsNullOrWhiteSpace(mes)) return (DateTime.Today.Year, DateTime.Today.Month);
+    var p = mes.Split('-');
+    if (p.Length == 2 && int.TryParse(p[0], out var a) && int.TryParse(p[1], out var m) && m is >= 1 and <= 12)
+        return (a, m);
+    return null;
+}
+
+// Titulos a RECEBER em aberto de um mes (?mes=AAAA-MM).
+app.MapGet("/financeiro/receber", (HttpContext ctx, DescobridorEmpresas descobridor, string? mes) =>
+{
+    var erro = ResolverContexto(ctx, descobridor, out var empresa, out var codEmpresa);
+    if (erro is not null) return erro;
+    var mm = ParseMes(mes);
+    if (mm is null) return Results.BadRequest(new { erro = "Parametro 'mes' invalido. Use AAAA-MM." });
+
+    var repo = new RepositorioFinanceiro(new LeitorSga(empresa!.CaminhoBanco));
+    var itens = repo.ReceberEmAbertoDoMes(codEmpresa, mm.Value.ano, mm.Value.mes)
+        .Select(t => new TituloDto(t.Nome, t.Numero, t.Vencimento?.ToString("yyyy-MM-dd"), t.Saldo, t.Observacao))
+        .ToList();
+    return Results.Ok(new TitulosResponse(mm.Value.ano, mm.Value.mes, itens.Count, itens.Sum(i => i.Saldo), itens));
+}).RequireAuthorization();
+
+// Titulos a PAGAR em aberto de um mes (?mes=AAAA-MM).
+app.MapGet("/financeiro/pagar", (HttpContext ctx, DescobridorEmpresas descobridor, string? mes) =>
+{
+    var erro = ResolverContexto(ctx, descobridor, out var empresa, out var codEmpresa);
+    if (erro is not null) return erro;
+    var mm = ParseMes(mes);
+    if (mm is null) return Results.BadRequest(new { erro = "Parametro 'mes' invalido. Use AAAA-MM." });
+
+    var repo = new RepositorioFinanceiro(new LeitorSga(empresa!.CaminhoBanco));
+    var itens = repo.PagarEmAbertoDoMes(codEmpresa, mm.Value.ano, mm.Value.mes)
+        .Select(t => new TituloDto(t.Nome, t.Numero, t.Vencimento?.ToString("yyyy-MM-dd"), t.Saldo, t.Observacao))
+        .ToList();
+    return Results.Ok(new TitulosResponse(mm.Value.ano, mm.Value.mes, itens.Count, itens.Sum(i => i.Saldo), itens));
+}).RequireAuthorization();
+
+// Card de vencidos (em aberto com vencimento anterior a hoje): a receber e a pagar.
+app.MapGet("/financeiro/vencidos", (HttpContext ctx, DescobridorEmpresas descobridor) =>
+{
+    var erro = ResolverContexto(ctx, descobridor, out var empresa, out var codEmpresa);
+    if (erro is not null) return erro;
+
+    var repo = new RepositorioFinanceiro(new LeitorSga(empresa!.CaminhoBanco));
+    var v = repo.Vencidos(codEmpresa);
+    return Results.Ok(new VencidosResponse(v.QtdReceber, v.TotalReceber, v.QtdPagar, v.TotalPagar));
+}).RequireAuthorization();
+
 app.Run();
