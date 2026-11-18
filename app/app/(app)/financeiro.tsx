@@ -210,7 +210,7 @@ function PainelSaldo({ cores, sessaoToken }: { cores: any; sessaoToken?: string 
     if (!sessaoToken || sel == null) return;
     setCarregando(true);
     api
-      .saldo(sessaoToken, sel, 90)
+      .saldo(sessaoToken, sel, 7)
       .then(setSerie)
       .catch(() => setSerie(null))
       .finally(() => setCarregando(false));
@@ -220,7 +220,7 @@ function PainelSaldo({ cores, sessaoToken }: { cores: any; sessaoToken?: string 
 
   return (
     <Card style={{ marginTop: theme.espaco(1) }}>
-      <Text style={[estilos.cardTitulo, { color: cores.texto }]}>Saldo em caixa (90 dias)</Text>
+      <Text style={[estilos.cardTitulo, { color: cores.texto }]}>Saldo em caixa (7 dias)</Text>
 
       {carregando || !serie ? (
         <ActivityIndicator color={cores.primaria} style={{ marginVertical: theme.espaco(3) }} />
