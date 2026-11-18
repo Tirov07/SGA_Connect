@@ -112,19 +112,21 @@ public sealed class RepositorioFinanceiro
     /// Usa agregacao por GRUPO (LEFT JOIN + GROUP BY), que no Access e MUITO mais rapido
     /// que subconsulta correlacionada por linha (importante em banco grande).
     /// </summary>
-    public ResumoVencidos Vencidos(int codEmpresa)
+    public ResumoVencidos Vencidos(int codEmpresa, int meses = 12)
     {
         var hoje = DateTime.Today;
+        // Janela: vencidos nos ultimos N meses (vencimento entre [hoje-N meses, hoje)).
+        var desde = hoje.AddMonths(-meses);
 
         // A RECEBER vencido: por titulo (NroConta), Valor - SUM(pago) via LEFT JOIN PGCTREC.
         const string sqlReceber = """
             SELECT c.Valor - IIF(IsNull(SUM(g.ValorPago)),0,SUM(g.ValorPago)) AS Saldo
             FROM CTREC AS c
             LEFT JOIN PGCTREC AS g ON g.NroConta_CTREC = c.NroConta
-            WHERE c.CodEmpresa = ? AND c.DataVencimento < ?
+            WHERE c.CodEmpresa = ? AND c.DataVencimento >= ? AND c.DataVencimento < ?
             GROUP BY c.NroConta, c.Valor
             """;
-        var receber = _leitor.Consultar(sqlReceber, r => Dec(r["Saldo"]), codEmpresa, hoje)
+        var receber = _leitor.Consultar(sqlReceber, r => Dec(r["Saldo"]), codEmpresa, desde, hoje)
             .Where(s => s > 0).ToList();
 
         // A PAGAR vencido: por titulo (chave composta), Valor - SUM(pago) via LEFT JOIN LIQCTPAG.
@@ -134,10 +136,10 @@ public sealed class RepositorioFinanceiro
             LEFT JOIN LIQCTPAG AS l
               ON l.NotaFiscal = p.NotaFiscal AND l.CodigoFornecedor = p.CodigoFornecedor
              AND l.CodigoEmpresa = p.CodigoEmpresa AND l.DataVencimento = p.Vencimento
-            WHERE p.CodigoEmpresa = ? AND p.Vencimento < ?
+            WHERE p.CodigoEmpresa = ? AND p.Vencimento >= ? AND p.Vencimento < ?
             GROUP BY p.NotaFiscal, p.CodigoFornecedor, p.CodigoEmpresa, p.Vencimento, p.Valor
             """;
-        var pagar = _leitor.Consultar(sqlPagar, r => Dec(r["Saldo"]), codEmpresa, hoje)
+        var pagar = _leitor.Consultar(sqlPagar, r => Dec(r["Saldo"]), codEmpresa, desde, hoje)
             .Where(s => s > 0).ToList();
 
         return new ResumoVencidos(
