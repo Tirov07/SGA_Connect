@@ -14,10 +14,15 @@ const COR_SERVICO = theme.grafico.servico; // teal
 const ALTURA = 140; // altura da area das barras (mais baixo)
 const PAD_TOPO = 8;
 
-/** Formata "AAAA-MM-DD" -> "13/08" */
+/** Formata "AAAA-MM-DD" -> "13/08" (usado no tooltip). */
 function diaMes(iso: string): string {
   const [, m, d] = iso.split("-");
   return `${d}/${m}`;
+}
+
+/** Só o dia "AAAA-MM-DD" -> "13" (rotulo sob a barra, que e estreita). */
+function soDia(iso: string): string {
+  return iso.split("-")[2];
 }
 
 /**
@@ -125,7 +130,7 @@ export function GraficoVendas({ dias }: { dias: VendaDia[] }) {
                     ]}
                     numberOfLines={1}
                   >
-                    {diaMes(d.data)}
+                    {soDia(d.data)}
                   </Text>
                 ))}
               </View>
