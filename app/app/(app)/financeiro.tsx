@@ -114,13 +114,17 @@ export default function Financeiro() {
             icone="arrow-down-circle"
             cor={cores.positivo}
             texto="Recebimentos em aberto"
-            onPress={() => router.push("/(app)/financeiro-titulos?tipo=receber")}
+            onPress={() =>
+              router.push({ pathname: "/(app)/financeiro-titulos", params: { tipo: "receber" } })
+            }
           />
           <BotaoLista
             icone="arrow-up-circle"
             cor={cores.negativo}
             texto="Pagamentos em aberto"
-            onPress={() => router.push("/(app)/financeiro-titulos?tipo=pagar")}
+            onPress={() =>
+              router.push({ pathname: "/(app)/financeiro-titulos", params: { tipo: "pagar" } })
+            }
           />
         </>
       )}
