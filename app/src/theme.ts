@@ -40,6 +40,21 @@ export const theme = {
     pequeno: 13,
     numeroCard: 30,
   },
+  // Familias Manrope (carregadas no _layout). Use sempre via estes nomes.
+  familia: {
+    regular: "Manrope_400Regular",
+    medio: "Manrope_500Medium",
+    semibold: "Manrope_600SemiBold",
+    bold: "Manrope_700Bold",
+    extrabold: "Manrope_800ExtraBold",
+  },
+  // Cores do grafico de vendas: peca (ambar) x servico (teal).
+  grafico: {
+    peca: "#F5A623",
+    pecaEscura: "#B9791A",
+    servico: "#2DD4BF",
+    servicoEscura: "#1A9183",
+  },
 } as const;
 
 export type Theme = typeof theme;
