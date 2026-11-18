@@ -274,6 +274,58 @@ app.MapPost("/auth/login", (LoginRequest req, DescobridorEmpresas descobridor, S
         PrecisaEscolherEmpresa: false, Empresas: null));
 }).RequireRateLimiting("login");
 
+// Lista as empresas do usuario LOGADO (mesmo CPF do token, ativo em cada banco).
+// Usado para o botao "Trocar empresa". Nao precisa de senha (identidade ja provada pelo JWT).
+app.MapGet("/auth/empresas-do-usuario", (HttpContext ctx, DescobridorEmpresas descobridor) =>
+{
+    var cpf = ctx.User.FindFirst("login")?.Value;
+    if (string.IsNullOrWhiteSpace(cpf)) return Results.Unauthorized();
+    if (!OperatingSystem.IsWindows())
+        return Results.Json(new { erro = "Leitura do SGA (Access) so no Windows." }, statusCode: StatusCodes.Status503ServiceUnavailable);
+
+    var repoLogin = new RepositorioLoginSga();
+    var lista = new List<EmpresaDoUsuario>();
+    foreach (var e in descobridor.Listar().Where(e => e.BancoExiste))
+    {
+        try
+        {
+            var u = repoLogin.BuscarPorCpf(new LeitorSga(e.CaminhoBanco), cpf);
+            if (u is not null) lista.Add(new EmpresaDoUsuario(e.Chave, u.Nome, u.CodEmpresa));
+        }
+        catch (Exception ex)
+        {
+            app.Logger.LogWarning(ex, "empresas-do-usuario: falha em {Empresa}", e.Chave);
+        }
+    }
+    return Results.Ok(lista);
+}).RequireAuthorization();
+
+// Troca de empresa SEM senha: emite um token novo para outra empresa do MESMO CPF.
+// Seguranca: o CPF vem do token atual; a API confirma que o CPF existe e esta ATIVO
+// na empresa de destino antes de emitir o novo token.
+app.MapPost("/auth/trocar-empresa", (TrocarEmpresaRequest req, HttpContext ctx, DescobridorEmpresas descobridor, ServicoJwt jwt) =>
+{
+    var cpf = ctx.User.FindFirst("login")?.Value;
+    if (string.IsNullOrWhiteSpace(cpf)) return Results.Unauthorized();
+    if (string.IsNullOrWhiteSpace(req.Empresa))
+        return Results.BadRequest(new { erro = "Informe a empresa de destino." });
+    if (!OperatingSystem.IsWindows())
+        return Results.Json(new { erro = "Leitura do SGA (Access) so no Windows." }, statusCode: StatusCodes.Status503ServiceUnavailable);
+
+    var empresa = descobridor.Resolver(req.Empresa);
+    if (empresa is null)
+        return Results.Json(new { erro = "Empresa invalida." }, statusCode: StatusCodes.Status403Forbidden);
+
+    var usuario = new RepositorioLoginSga().BuscarPorCpf(new LeitorSga(empresa.CaminhoBanco), cpf);
+    if (usuario is null)
+        return Results.Json(new { erro = "Voce nao tem acesso a essa empresa." }, statusCode: StatusCodes.Status403Forbidden);
+
+    var (token, expira) = jwt.Gerar(usuario.Cpf, usuario.Nome, empresa.Chave, usuario.CodEmpresa);
+    return Results.Ok(new LoginResponse(
+        Token: token, ExpiraEm: expira, Nome: usuario.Nome, Empresa: empresa.Chave, CodEmpresa: usuario.CodEmpresa,
+        PrecisaEscolherEmpresa: false, Empresas: null));
+}).RequireAuthorization();
+
 // Resumo da home — le OS + financeiro do DADOSTAB (somente leitura). A empresa e o
 // CodEmpresa vem do token, nunca do app.
 app.MapGet("/resumo", (HttpContext ctx, DescobridorEmpresas descobridor) =>

@@ -17,10 +17,10 @@ import { moeda, horaCurta } from "../../src/format";
 import { StatCard } from "../../src/components/StatCard";
 import { Card } from "../../src/components/Card";
 import { GraficoVendas } from "../../src/components/GraficoVendas";
-import { BotaoTema } from "../../src/components/BotaoTema";
+import { BotoesTopo } from "../../src/components/BotoesTopo";
 
 export default function Home() {
-  const { sessao, sair } = useAuth();
+  const { sessao } = useAuth();
   const { cores } = useTema();
   const insets = useSafeAreaInsets();
 
@@ -80,15 +80,7 @@ export default function Home() {
             {sessao?.empresa?.toUpperCase()}
           </Text>
         </View>
-        <View style={estilos.acoes}>
-          <BotaoTema />
-          <TouchableOpacity
-            style={[estilos.sair, { borderColor: cores.borda, backgroundColor: cores.superficie }]}
-            onPress={sair}
-          >
-            <Text style={[estilos.sairTxt, { color: cores.textoFraco }]}>Sair</Text>
-          </TouchableOpacity>
-        </View>
+        <BotoesTopo />
       </View>
 
       {carregando ? (
@@ -143,14 +135,6 @@ const estilos = StyleSheet.create({
     letterSpacing: 1,
     marginTop: 2,
   },
-  acoes: { flexDirection: "row", alignItems: "center", gap: theme.espaco(1) },
-  sair: {
-    paddingVertical: theme.espaco(1),
-    paddingHorizontal: theme.espaco(2),
-    borderRadius: theme.raio.pill,
-    borderWidth: 1,
-  },
-  sairTxt: { fontFamily: theme.familia.bold, fontSize: theme.fonte.pequeno },
   graficoCard: { marginBottom: theme.espaco(2) },
   secaoTitulo: { fontSize: theme.fonte.secao, fontFamily: theme.familia.extrabold },
   secaoSub: { fontSize: theme.fonte.pequeno, marginBottom: theme.espaco(1.5) },
