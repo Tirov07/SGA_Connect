@@ -436,23 +436,30 @@ function Extrato({
       </View>
 
       {/* Seletor de bancos (varios) */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ maxHeight: 44 }}>
-        <View style={{ flexDirection: "row", gap: theme.espaco(1), paddingHorizontal: theme.espaco(2.5) }}>
-          {bancos.map((b) => {
-            const ativo = selecionados.includes(b.numeroBanco);
-            return (
-              <TouchableOpacity
-                key={b.numeroBanco}
-                onPress={() => alternar(b.numeroBanco)}
-                style={[estilos.chip, { borderColor: cores.borda, backgroundColor: ativo ? cores.primaria : cores.superficie2 }]}
-              >
-                <Text style={[estilos.chipTxt, { color: ativo ? "#fff" : cores.textoFraco }]} numberOfLines={1}>
-                  {b.nome}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{
+          gap: theme.espaco(1),
+          paddingHorizontal: theme.espaco(2.5),
+          paddingVertical: theme.espaco(0.5),
+          alignItems: "center",
+        }}
+      >
+        {bancos.map((b) => {
+          const ativo = selecionados.includes(b.numeroBanco);
+          return (
+            <TouchableOpacity
+              key={b.numeroBanco}
+              onPress={() => alternar(b.numeroBanco)}
+              style={[estilos.chip, { borderColor: cores.borda, backgroundColor: ativo ? cores.primaria : cores.superficie2 }]}
+            >
+              <Text style={[estilos.chipTxt, { color: ativo ? "#fff" : cores.textoFraco }]} numberOfLines={1}>
+                {b.nome}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
 
       {/* Totais */}
@@ -590,11 +597,12 @@ const estilos = StyleSheet.create({
   meta: { fontSize: theme.fonte.pequeno },
   obs: { fontSize: theme.fonte.pequeno, marginTop: 6, fontStyle: "italic" },
   chip: {
-    paddingVertical: theme.espaco(0.75),
-    paddingHorizontal: theme.espaco(1.5),
+    height: 34,
+    justifyContent: "center",
+    paddingHorizontal: theme.espaco(1.75),
     borderRadius: theme.raio.pill,
     borderWidth: 1,
-    maxWidth: 160,
+    maxWidth: 180,
   },
   chipTxt: { fontSize: theme.fonte.pequeno, fontFamily: theme.familia.semibold },
   totais: {
