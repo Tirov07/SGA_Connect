@@ -76,7 +76,14 @@ public sealed record VencidosResponse(
 
 public sealed record BancoDto(int NumeroBanco, string Nome);
 
-public sealed record LancamentoDto(string Data, string Descricao, decimal Valor, bool Entrada);
+public sealed record LancamentoDto(
+    string Data,
+    string Descricao,
+    string Nome,
+    string Numero,
+    string Observacao,
+    decimal Valor,
+    bool Entrada);
 
 /// <summary>Extrato consolidado de 1+ bancos num periodo.</summary>
 public sealed record ExtratoResponse(

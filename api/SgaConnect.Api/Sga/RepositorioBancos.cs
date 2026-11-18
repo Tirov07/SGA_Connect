@@ -24,7 +24,14 @@ public sealed class RepositorioBancos
     public sealed record Banco(int NumeroBanco, string Nome);
 
     /// <summary>Um lancamento do extrato (entrada ou saida).</summary>
-    public sealed record Lancamento(DateTime Data, string Descricao, decimal Valor, bool Entrada);
+    public sealed record Lancamento(
+        DateTime Data,
+        string Descricao,
+        string Nome,
+        string Numero,
+        string Observacao,
+        decimal Valor,
+        bool Entrada);
 
     /// <summary>Um ponto da serie de saldo (saldo acumulado ao fim do dia).</summary>
     public sealed record PontoSaldo(DateTime Data, decimal Saldo);
@@ -53,20 +60,30 @@ public sealed class RepositorioBancos
         if (numerosBanco.Count == 0) return new();
         var inList = string.Join(",", numerosBanco); // numeros inteiros, seguro (sem texto do usuario)
 
+        // ENTRADAS (recebimentos): nome do CLIENTE (CLI.RazaoSocial), numero (NotaOsCupon), obs (Observacoes).
         var entradas = _leitor.Consultar($"""
-            SELECT DataPagto AS D, ValorPago AS V
-            FROM PGCTREC
-            WHERE CodEmpresa = ? AND Carteira IN ({inList})
-              AND DataPagto >= ? AND DataPagto < ?
-            """, r => new Lancamento(Convert.ToDateTime(r["D"]), "Recebimento", Dec(r["V"]), true),
+            SELECT g.DataPagto AS D, g.ValorPago AS V, g.NotaOsCupon AS Num,
+                   g.Observacoes AS Obs, cl.RazaoSocial AS Nome
+            FROM PGCTREC AS g
+            LEFT JOIN CLI AS cl ON g.CodigoCliente = cl.CodigoCliente
+            WHERE g.CodEmpresa = ? AND g.Carteira IN ({inList})
+              AND g.DataPagto >= ? AND g.DataPagto < ?
+            """, r => new Lancamento(
+                Convert.ToDateTime(r["D"]), "Recebimento",
+                Txt(r["Nome"]), Txt(r["Num"]), Txt(r["Obs"]), Dec(r["V"]), true),
             codEmpresa, inicio, fimExclusivo);
 
+        // SAIDAS (pagamentos): nome do FORNECEDOR (FOR.RazaoSocial), numero (NotaFiscal), obs (OBSERVACAO).
         var saidas = _leitor.Consultar($"""
-            SELECT DataPagto AS D, ValorPago AS V
-            FROM LIQCTPAG
-            WHERE CodigoEmpresa = ? AND Carteira IN ({inList})
-              AND DataPagto >= ? AND DataPagto < ?
-            """, r => new Lancamento(Convert.ToDateTime(r["D"]), "Pagamento", Dec(r["V"]), false),
+            SELECT l.DataPagto AS D, l.ValorPago AS V, l.NotaFiscal AS Num,
+                   l.OBSERVACAO AS Obs, f.RazaoSocial AS Nome
+            FROM LIQCTPAG AS l
+            LEFT JOIN [FOR] AS f ON l.CodigoFornecedor = f.CodigoFornecedor
+            WHERE l.CodigoEmpresa = ? AND l.Carteira IN ({inList})
+              AND l.DataPagto >= ? AND l.DataPagto < ?
+            """, r => new Lancamento(
+                Convert.ToDateTime(r["D"]), "Pagamento",
+                Txt(r["Nome"]), Txt(r["Num"]), Txt(r["Obs"]), Dec(r["V"]), false),
             codEmpresa, inicio, fimExclusivo);
 
         return entradas.Concat(saidas).OrderBy(l => l.Data).ToList();
@@ -84,7 +101,7 @@ public sealed class RepositorioBancos
             SomaEntradasAte(codEmpresa, numeroBanco, inicio) - SomaSaidasAte(codEmpresa, numeroBanco, inicio);
 
         // 2) Movimento liquido por dia DENTRO do periodo.
-        var porDia = new SortedDictionary<DateTime, decimal>();
+        var porDia = new Dictionary<DateTime, decimal>();
         foreach (var l in Extrato(codEmpresa, new[] { numeroBanco }, inicio, fimExclusivo))
         {
             var dia = l.Data.Date;
@@ -92,19 +109,15 @@ public sealed class RepositorioBancos
             porDia[dia] = atual + (l.Entrada ? l.Valor : -l.Valor);
         }
 
-        // 3) Serie: saldo do fim de cada dia que teve movimento.
+        // 3) Serie CONTINUA: um ponto por dia do periodo. Nos dias sem movimento, a linha
+        //    permanece no mesmo saldo do dia anterior (patamar), ate ter novo movimento.
         var serie = new List<PontoSaldo>();
         var saldo = saldoBase;
-        foreach (var kv in porDia)
+        for (var dia = inicio.Date; dia < fimExclusivo.Date; dia = dia.AddDays(1))
         {
-            saldo += kv.Value;
-            serie.Add(new PontoSaldo(kv.Key, saldo));
+            if (porDia.TryGetValue(dia, out var mov)) saldo += mov;
+            serie.Add(new PontoSaldo(dia, saldo));
         }
-
-        // Se nao houve movimento no periodo, devolve ao menos o saldo base no inicio.
-        if (serie.Count == 0)
-            serie.Add(new PontoSaldo(inicio.Date, saldoBase));
-
         return serie;
     }
 
@@ -119,4 +132,5 @@ public sealed class RepositorioBancos
             codEmpresa, numeroBanco, limite);
 
     private static decimal Dec(object? v) => v is null or DBNull ? 0m : Convert.ToDecimal(v);
+    private static string Txt(object? v) => v is null or DBNull ? "" : v.ToString()!.Trim();
 }

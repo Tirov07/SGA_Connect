@@ -495,7 +495,8 @@ app.MapGet("/financeiro/extrato", (HttpContext ctx, DescobridorEmpresas descobri
         Resultado: entradas - saidas,
         Lancamentos: lanc
             .OrderByDescending(l => l.Data) // mais recentes primeiro na lista
-            .Select(l => new LancamentoDto(l.Data.ToString("yyyy-MM-dd"), l.Descricao, l.Valor, l.Entrada))
+            .Select(l => new LancamentoDto(
+                l.Data.ToString("yyyy-MM-dd"), l.Descricao, l.Nome, l.Numero, l.Observacao, l.Valor, l.Entrada))
             .ToList()));
 }).RequireAuthorization();
 
