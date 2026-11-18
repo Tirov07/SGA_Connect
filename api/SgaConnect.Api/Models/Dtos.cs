@@ -103,3 +103,57 @@ public sealed record SaldoSerieResponse(
     string Fim,
     decimal SaldoAtual,
     IReadOnlyList<PontoSaldoDto> Pontos);
+
+// ---------------- OSv ----------------
+
+/// <summary>Uma OS numa lista (aberta ou fechada).</summary>
+public sealed record OsItemDto(
+    int NumOs,
+    string Cliente,
+    string Placa,
+    string Operacao,
+    bool ComLaudo,
+    string? Abertura,     // "AAAA-MM-DD"
+    string? Fechamento,   // "AAAA-MM-DD"
+    decimal Peca,
+    decimal Servico,
+    decimal Total);
+
+/// <summary>Lista de OS + totais.</summary>
+public sealed record OsListaResponse(
+    int Quantidade,
+    decimal TotalPeca,
+    decimal TotalServico,
+    decimal TotalGeral,
+    IReadOnlyList<OsItemDto> Itens);
+
+/// <summary>Um dia do grafico de OSv abertas: quebra com/sem laudo.</summary>
+public sealed record OsAberturaDiaDto(string Data, int ComLaudo, int SemLaudo, int Total);
+
+/// <summary>Grafico de OSv abertas por dia.</summary>
+public sealed record OsAberturasResponse(
+    int DiasRetornados,
+    int TotalComLaudo,
+    int TotalSemLaudo,
+    IReadOnlyList<OsAberturaDiaDto> Dias);
+
+/// <summary>Uma linha do resumo financeiro por fechamento.</summary>
+public sealed record OsResumoLinhaDto(
+    int NumOs,
+    string Cliente,
+    string NotaPeca,
+    string NotaServico,
+    string? Fechamento,   // "AAAA-MM-DD"
+    decimal Peca,
+    decimal Servico,
+    decimal Total);
+
+/// <summary>Resumo financeiro por fechamento (dia ou mes) + total no topo.</summary>
+public sealed record OsResumoResponse(
+    string Inicio,
+    string Fim,
+    int Quantidade,
+    decimal TotalPeca,
+    decimal TotalServico,
+    decimal TotalGeral,
+    IReadOnlyList<OsResumoLinhaDto> Linhas);

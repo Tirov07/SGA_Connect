@@ -89,6 +89,64 @@ export type SaldoSerie = {
   pontos: PontoSaldo[];
 };
 
+// ---------------- OSv ----------------
+
+export type OsItem = {
+  numOs: number;
+  cliente: string;
+  placa: string;
+  operacao: string;
+  comLaudo: boolean;
+  abertura: string | null;
+  fechamento: string | null;
+  peca: number;
+  servico: number;
+  total: number;
+};
+
+export type OsLista = {
+  quantidade: number;
+  totalPeca: number;
+  totalServico: number;
+  totalGeral: number;
+  itens: OsItem[];
+};
+
+export type OsAberturaDia = {
+  data: string; // "AAAA-MM-DD"
+  comLaudo: number;
+  semLaudo: number;
+  total: number;
+};
+
+export type OsAberturas = {
+  diasRetornados: number;
+  totalComLaudo: number;
+  totalSemLaudo: number;
+  dias: OsAberturaDia[];
+};
+
+export type OsResumoLinha = {
+  numOs: number;
+  cliente: string;
+  notaPeca: string;
+  notaServico: string;
+  fechamento: string | null;
+  peca: number;
+  servico: number;
+  total: number;
+};
+
+export type OsResumo = {
+  inicio: string;
+  fim: string;
+  quantidade: number;
+  totalPeca: number;
+  totalServico: number;
+  totalGeral: number;
+  linhas: OsResumoLinha[];
+};
+
 class ApiError extends Error {
   constructor(public status: number, message: string) {
     super(message);
@@ -188,6 +246,51 @@ export const api = {
   /** Serie de saldo acumulado de UM banco (grafico estilo bolsa). */
   async saldo(token: string, numeroBanco: number, dias = 90): Promise<SaldoSerie> {
     const resp = await fetch(`${API_URL}/financeiro/saldo?banco=${numeroBanco}&dias=${dias}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return tratar(resp);
+  },
+
+  // ---------------- OSv ----------------
+
+  /** OS em aberto (DataFechamento vazia). */
+  async osvAbertas(token: string): Promise<OsLista> {
+    const resp = await fetch(`${API_URL}/osv/abertas`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return tratar(resp);
+  },
+
+  /** OS fechadas nos ultimos N dias (default 7). */
+  async osvFechadas(token: string, dias = 7): Promise<OsLista> {
+    const resp = await fetch(`${API_URL}/osv/fechadas?dias=${dias}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return tratar(resp);
+  },
+
+  /** Grafico de OSv abertas por dia (com/sem laudo). */
+  async osvAberturas(token: string, dias = 10): Promise<OsAberturas> {
+    const resp = await fetch(`${API_URL}/osv/aberturas?dias=${dias}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return tratar(resp);
+  },
+
+  /**
+   * Resumo financeiro por data de FECHAMENTO.
+   * periodo "mes": passa mes "AAAA-MM"; periodo "dia": passa data "AAAA-MM-DD".
+   */
+  async osvResumo(
+    token: string,
+    periodo: "dia" | "mes",
+    chave: string
+  ): Promise<OsResumo> {
+    const q =
+      periodo === "dia"
+        ? `periodo=dia&data=${chave}`
+        : `periodo=mes&mes=${chave}`;
+    const resp = await fetch(`${API_URL}/osv/resumo?${q}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return tratar(resp);
