@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { View, Text, StyleSheet, ScrollView } from "react-native";
+import { View, Text, StyleSheet, LayoutChangeEvent } from "react-native";
 import Svg, { Rect } from "react-native-svg";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
@@ -11,9 +11,7 @@ import { VendaDia } from "../api";
 const COR_PECA = theme.grafico.peca; // ambar
 const COR_SERVICO = theme.grafico.servico; // teal
 
-const ALTURA = 180; // altura da area das barras
-const LARGURA_BARRA = 26;
-const GAP = 12;
+const ALTURA = 140; // altura da area das barras (mais baixo)
 const PAD_TOPO = 8;
 
 /** Formata "AAAA-MM-DD" -> "13/08" */
@@ -24,34 +22,43 @@ function diaMes(iso: string): string {
 
 /**
  * Grafico de barras EMPILHADAS (ambar = peca, teal = servico) dos dias com movimento.
- * Pressionar/arrastar sobre uma coluna destaca ela e mostra um tooltip com o total do dia
- * e a quebra peca/servico. As demais colunas ficam esmaecidas enquanto se interage.
+ * Ajusta a largura das barras para CABER na largura disponivel (sem rolagem).
+ * Pressionar/arrastar numa coluna destaca ela e mostra um tooltip com total + quebra.
  */
 export function GraficoVendas({ dias }: { dias: VendaDia[] }) {
   const { cores } = useTema();
   const [sel, setSel] = useState<number | null>(null);
+  const [largura, setLargura] = useState(0);
 
   const maxTotal = useMemo(() => Math.max(1, ...dias.map((d) => d.total)), [dias]);
-  const larguraConteudo = dias.length * (LARGURA_BARRA + GAP) + GAP;
 
-  // Gesto: toque longo + arraste; calcula a coluna sob o dedo pela posicao X.
+  const n = dias.length;
+  // Geometria responsiva: gap proporcional, barra ocupa o resto. Tudo cabe na largura.
+  const gap = n > 1 ? Math.max(6, Math.min(14, largura * 0.03)) : 0;
+  const larguraBarra = n > 0 ? Math.max(6, (largura - gap * (n - 1)) / n) : 0;
+  const passo = larguraBarra + gap;
+
   const pan = Gesture.Pan()
     .activateAfterLongPress(120)
     .onBegin((e) => {
-      const i = Math.floor((e.x - GAP) / (LARGURA_BARRA + GAP));
-      runOnJS(setSel)(Math.max(0, Math.min(dias.length - 1, i)));
+      const i = Math.floor(e.x / passo);
+      runOnJS(setSel)(Math.max(0, Math.min(n - 1, i)));
     })
     .onUpdate((e) => {
-      const i = Math.floor((e.x - GAP) / (LARGURA_BARRA + GAP));
-      runOnJS(setSel)(Math.max(0, Math.min(dias.length - 1, i)));
+      const i = Math.floor(e.x / passo);
+      runOnJS(setSel)(Math.max(0, Math.min(n - 1, i)));
     })
     .onFinalize(() => runOnJS(setSel)(null));
 
   const selecionado = sel != null ? dias[sel] : null;
 
+  function medir(e: LayoutChangeEvent) {
+    setLargura(e.nativeEvent.layout.width);
+  }
+
   return (
     <View>
-      {/* Area do tooltip: reserva altura fixa (sem texto de dica) para o layout nao pular */}
+      {/* Area do tooltip: altura fixa para o layout nao pular */}
       <View style={estilos.tipArea}>
         {selecionado ? (
           <View style={[estilos.tip, { backgroundColor: cores.superficie2, borderColor: cores.borda }]}>
@@ -83,49 +90,42 @@ export function GraficoVendas({ dias }: { dias: VendaDia[] }) {
         </View>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <GestureDetector gesture={pan}>
-          <View>
-            <Svg width={larguraConteudo} height={ALTURA}>
-              {dias.map((d, i) => {
-                const x = GAP + i * (LARGURA_BARRA + GAP);
-                const hServico = (d.servico / maxTotal) * (ALTURA - PAD_TOPO);
-                const hPeca = (d.peca / maxTotal) * (ALTURA - PAD_TOPO);
-                const yServico = ALTURA - hServico;
-                const yPeca = yServico - hPeca;
-                const apagado = sel != null && sel !== i;
-                const op = apagado ? 0.3 : 1;
-                return (
-                  <React.Fragment key={d.data}>
-                    {/* servico (teal) embaixo */}
-                    <Rect x={x} y={yServico} width={LARGURA_BARRA} height={Math.max(0, hServico)} rx={3} fill={COR_SERVICO} opacity={op} />
-                    {/* peca (ambar) em cima */}
-                    <Rect x={x} y={yPeca} width={LARGURA_BARRA} height={Math.max(0, hPeca)} rx={3} fill={COR_PECA} opacity={op} />
-                  </React.Fragment>
-                );
-              })}
-            </Svg>
-            {/* rotulos de data sob as barras */}
-            <View style={{ width: larguraConteudo, flexDirection: "row" }}>
-              {dias.map((d, i) => (
-                <Text
-                  key={d.data}
-                  style={[
-                    estilos.rotulo,
-                    {
-                      width: LARGURA_BARRA + GAP,
-                      marginLeft: i === 0 ? GAP - GAP / 2 : 0,
-                      color: sel === i ? cores.texto : cores.textoApagado,
-                    },
-                  ]}
-                >
-                  {diaMes(d.data)}
-                </Text>
-              ))}
-            </View>
-          </View>
-        </GestureDetector>
-      </ScrollView>
+      <GestureDetector gesture={pan}>
+        <View onLayout={medir}>
+          {largura > 0 && (
+            <>
+              <Svg width={largura} height={ALTURA}>
+                {dias.map((d, i) => {
+                  const x = i * passo;
+                  const hServico = (d.servico / maxTotal) * (ALTURA - PAD_TOPO);
+                  const hPeca = (d.peca / maxTotal) * (ALTURA - PAD_TOPO);
+                  const yServico = ALTURA - hServico;
+                  const yPeca = yServico - hPeca;
+                  const apagado = sel != null && sel !== i;
+                  const op = apagado ? 0.3 : 1;
+                  return (
+                    <React.Fragment key={d.data}>
+                      <Rect x={x} y={yServico} width={larguraBarra} height={Math.max(0, hServico)} rx={3} fill={COR_SERVICO} opacity={op} />
+                      <Rect x={x} y={yPeca} width={larguraBarra} height={Math.max(0, hPeca)} rx={3} fill={COR_PECA} opacity={op} />
+                    </React.Fragment>
+                  );
+                })}
+              </Svg>
+              <View style={{ flexDirection: "row" }}>
+                {dias.map((d, i) => (
+                  <Text
+                    key={d.data}
+                    style={[estilos.rotulo, { width: passo, color: sel === i ? cores.texto : cores.textoApagado }]}
+                    numberOfLines={1}
+                  >
+                    {diaMes(d.data)}
+                  </Text>
+                ))}
+              </View>
+            </>
+          )}
+        </View>
+      </GestureDetector>
     </View>
   );
 }
@@ -148,5 +148,5 @@ const estilos = StyleSheet.create({
   legItem: { flexDirection: "row", alignItems: "center" },
   legTxt: { fontSize: theme.fonte.pequeno, marginLeft: 6 },
   bolinha: { width: 10, height: 10, borderRadius: 5 },
-  rotulo: { fontSize: 10, textAlign: "center", marginTop: 6 },
+  rotulo: { fontSize: 9, textAlign: "center", marginTop: 6 },
 });

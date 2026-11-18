@@ -43,3 +43,28 @@ public sealed record VendasResumoResponse(
     decimal TotalPeca,
     decimal TotalServico,
     IReadOnlyList<VendaDiaDto> Dias);
+
+// ---------------- Financeiro (Bloco A) ----------------
+
+/// <summary>Titulo em aberto (a receber ou a pagar).</summary>
+public sealed record TituloDto(
+    string Nome,
+    string Numero,
+    string? Vencimento, // "AAAA-MM-DD"
+    decimal Saldo,
+    string Observacao);
+
+/// <summary>Lista de titulos em aberto de um mes + total.</summary>
+public sealed record TitulosResponse(
+    int Ano,
+    int Mes,
+    int Quantidade,
+    decimal Total,
+    IReadOnlyList<TituloDto> Titulos);
+
+/// <summary>Card de vencidos: quantidade e total, a receber e a pagar.</summary>
+public sealed record VencidosResponse(
+    int QtdReceber,
+    decimal TotalReceber,
+    int QtdPagar,
+    decimal TotalPagar);
