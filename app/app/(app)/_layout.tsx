@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import { Tabs } from "expo-router";
+import { Tabs, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { theme } from "../../src/theme";
@@ -21,9 +21,12 @@ const ABAS: { nome: string; rotulo: string; icone: IconeNome; central?: boolean 
   { nome: "tecnico", rotulo: "Técnico", icone: "tool" },
 ];
 
-function BarraCustom({ state, navigation }: any) {
+function BarraCustom({ state }: any) {
   const insets = useSafeAreaInsets();
   const { cores } = useTema();
+  const router = useRouter();
+  // Nome da rota ativa (ex.: "home", "financeiro", "financeiro-titulos").
+  const rotaAtiva: string | undefined = state?.routes?.[state.index]?.name;
   return (
     <View
       style={[
@@ -36,9 +39,8 @@ function BarraCustom({ state, navigation }: any) {
       ]}
     >
       {ABAS.map((aba) => {
-        const rota = state.routes.find((r: any) => r.name === aba.nome);
-        const foco = rota ? state.index === state.routes.indexOf(rota) : false;
-        const ir = () => rota && navigation.navigate(aba.nome);
+        const foco = rotaAtiva === aba.nome;
+        const ir = () => router.navigate(`/(app)/${aba.nome}` as never);
 
         if (aba.central) {
           return (

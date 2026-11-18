@@ -58,27 +58,7 @@ export function GraficoVendas({ dias }: { dias: VendaDia[] }) {
 
   return (
     <View>
-      {/* Area do tooltip: altura fixa para o layout nao pular */}
-      <View style={estilos.tipArea}>
-        {selecionado ? (
-          <View style={[estilos.tip, { backgroundColor: cores.superficie2, borderColor: cores.borda }]}>
-            <Text style={[estilos.tipData, { color: cores.textoFraco }]}>{diaMes(selecionado.data)}</Text>
-            <Text style={[estilos.tipTotal, { color: cores.texto }]}>{moeda(selecionado.total)}</Text>
-            <View style={estilos.tipLinha}>
-              <View style={[estilos.bolinha, { backgroundColor: COR_PECA }]} />
-              <Text style={[estilos.tipLabel, { color: cores.textoFraco }]}>Peça</Text>
-              <Text style={[estilos.tipValor, { color: cores.texto }]}>{moeda(selecionado.peca)}</Text>
-            </View>
-            <View style={estilos.tipLinha}>
-              <View style={[estilos.bolinha, { backgroundColor: COR_SERVICO }]} />
-              <Text style={[estilos.tipLabel, { color: cores.textoFraco }]}>Serviço</Text>
-              <Text style={[estilos.tipValor, { color: cores.texto }]}>{moeda(selecionado.servico)}</Text>
-            </View>
-          </View>
-        ) : null}
-      </View>
-
-      {/* Legenda */}
+      {/* Legenda (logo abaixo do subtitulo da home) */}
       <View style={estilos.legenda}>
         <View style={estilos.legItem}>
           <View style={[estilos.bolinha, { backgroundColor: COR_PECA }]} />
@@ -92,6 +72,26 @@ export function GraficoVendas({ dias }: { dias: VendaDia[] }) {
 
       <GestureDetector gesture={pan}>
         <View onLayout={medir}>
+          {/* Tooltip sobreposto (nao ocupa espaco quando nao ha selecao) */}
+          {selecionado ? (
+            <View
+              style={[estilos.tip, { backgroundColor: cores.superficie2, borderColor: cores.borda }]}
+              pointerEvents="none"
+            >
+              <Text style={[estilos.tipData, { color: cores.textoFraco }]}>{diaMes(selecionado.data)}</Text>
+              <Text style={[estilos.tipTotal, { color: cores.texto }]}>{moeda(selecionado.total)}</Text>
+              <View style={estilos.tipLinha}>
+                <View style={[estilos.bolinha, { backgroundColor: COR_PECA }]} />
+                <Text style={[estilos.tipLabel, { color: cores.textoFraco }]}>Peça</Text>
+                <Text style={[estilos.tipValor, { color: cores.texto }]}>{moeda(selecionado.peca)}</Text>
+              </View>
+              <View style={estilos.tipLinha}>
+                <View style={[estilos.bolinha, { backgroundColor: COR_SERVICO }]} />
+                <Text style={[estilos.tipLabel, { color: cores.textoFraco }]}>Serviço</Text>
+                <Text style={[estilos.tipValor, { color: cores.texto }]}>{moeda(selecionado.servico)}</Text>
+              </View>
+            </View>
+          ) : null}
           {largura > 0 && (
             <>
               <Svg width={largura} height={ALTURA}>
@@ -115,7 +115,14 @@ export function GraficoVendas({ dias }: { dias: VendaDia[] }) {
                 {dias.map((d, i) => (
                   <Text
                     key={d.data}
-                    style={[estilos.rotulo, { width: passo, color: sel === i ? cores.texto : cores.textoApagado }]}
+                    style={[
+                      estilos.rotulo,
+                      {
+                        width: larguraBarra,
+                        marginRight: i < n - 1 ? gap : 0,
+                        color: sel === i ? cores.texto : cores.textoApagado,
+                      },
+                    ]}
                     numberOfLines={1}
                   >
                     {diaMes(d.data)}
@@ -131,13 +138,15 @@ export function GraficoVendas({ dias }: { dias: VendaDia[] }) {
 }
 
 const estilos = StyleSheet.create({
-  tipArea: { minHeight: 92, justifyContent: "center" },
   tip: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    zIndex: 10,
     borderRadius: theme.raio.md,
     borderWidth: 1,
     padding: theme.espaco(1.5),
-    alignSelf: "flex-start",
-    minWidth: 180,
+    minWidth: 160,
   },
   tipData: { fontSize: theme.fonte.pequeno, fontFamily: theme.familia.bold },
   tipTotal: { fontSize: theme.fonte.secao, fontFamily: theme.familia.extrabold, marginVertical: 2 },
