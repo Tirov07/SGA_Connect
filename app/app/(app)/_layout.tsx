@@ -102,8 +102,6 @@ export default function AppLayout() {
       <Tabs.Screen name="home" />
       <Tabs.Screen name="estoque" />
       <Tabs.Screen name="tecnico" />
-      {/* Telas acessiveis por navegacao, mas que NAO aparecem na tab bar */}
-      <Tabs.Screen name="financeiro-titulos" options={{ href: null }} />
     </Tabs>
   );
 }
