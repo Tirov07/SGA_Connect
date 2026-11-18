@@ -13,13 +13,22 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useAuth } from "../../src/auth";
 import { useTema } from "../../src/tema";
-import { api, Resumo, Vencidos, Titulo } from "../../src/api";
+import {
+  api,
+  Resumo,
+  Vencidos,
+  Titulo,
+  Banco,
+  SaldoSerie,
+  Extrato as ExtratoData,
+} from "../../src/api";
 import { theme } from "../../src/theme";
 import { moeda, dataBr, rotuloMes, somarMes, chaveMes } from "../../src/format";
 import { Card } from "../../src/components/Card";
 import { StatCard } from "../../src/components/StatCard";
+import { GraficoSaldo } from "../../src/components/GraficoSaldo";
 
-type Vista = "painel" | "receber" | "pagar";
+type Vista = "painel" | "receber" | "pagar" | "extrato";
 
 export default function Financeiro() {
   const { sessao } = useAuth();
@@ -32,6 +41,17 @@ export default function Financeiro() {
     return (
       <Painel
         onAbrir={(v) => setVista(v)}
+        topo={insets.top}
+        base={insets.bottom}
+        cores={cores}
+        sessaoToken={sessao?.token}
+      />
+    );
+  }
+  if (vista === "extrato") {
+    return (
+      <Extrato
+        onVoltar={() => setVista("painel")}
         topo={insets.top}
         base={insets.bottom}
         cores={cores}
@@ -60,7 +80,7 @@ function Painel({
   cores,
   sessaoToken,
 }: {
-  onAbrir: (v: "receber" | "pagar") => void;
+  onAbrir: (v: "receber" | "pagar" | "extrato") => void;
   topo: number;
   base: number;
   cores: any;
@@ -157,7 +177,80 @@ function Painel({
 
       <BotaoLista icone="arrow-down-circle" cor={cores.positivo} texto="Recebimentos em aberto" cores={cores} onPress={() => onAbrir("receber")} />
       <BotaoLista icone="arrow-up-circle" cor={cores.negativo} texto="Pagamentos em aberto" cores={cores} onPress={() => onAbrir("pagar")} />
+      <BotaoLista icone="file-text" cor={cores.texto} texto="Resumo financeiro (extrato)" cores={cores} onPress={() => onAbrir("extrato")} />
+
+      {/* Grafico de saldo por banco */}
+      <PainelSaldo cores={cores} sessaoToken={sessaoToken} />
     </ScrollView>
+  );
+}
+
+// -------------------- Grafico de saldo por banco (na propria home do financeiro) --------------------
+
+function PainelSaldo({ cores, sessaoToken }: { cores: any; sessaoToken?: string }) {
+  const [bancos, setBancos] = useState<Banco[]>([]);
+  const [sel, setSel] = useState<number | null>(null);
+  const [serie, setSerie] = useState<SaldoSerie | null>(null);
+  const [carregando, setCarregando] = useState(false);
+
+  // Carrega a lista de bancos uma vez.
+  useEffect(() => {
+    if (!sessaoToken) return;
+    api
+      .bancos(sessaoToken)
+      .then((bs) => {
+        setBancos(bs);
+        if (bs.length > 0) setSel(bs[0].numeroBanco);
+      })
+      .catch(() => setBancos([]));
+  }, [sessaoToken]);
+
+  // Carrega a serie do banco selecionado.
+  useEffect(() => {
+    if (!sessaoToken || sel == null) return;
+    setCarregando(true);
+    api
+      .saldo(sessaoToken, sel, 90)
+      .then(setSerie)
+      .catch(() => setSerie(null))
+      .finally(() => setCarregando(false));
+  }, [sessaoToken, sel]);
+
+  if (bancos.length === 0) return null;
+
+  return (
+    <Card style={{ marginTop: theme.espaco(1) }}>
+      <Text style={[estilos.cardTitulo, { color: cores.texto }]}>Saldo em caixa (90 dias)</Text>
+
+      {carregando || !serie ? (
+        <ActivityIndicator color={cores.primaria} style={{ marginVertical: theme.espaco(3) }} />
+      ) : (
+        <GraficoSaldo pontos={serie.pontos} />
+      )}
+
+      {/* Seletor de banco (1 por vez) */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: theme.espaco(1) }}>
+        <View style={{ flexDirection: "row", gap: theme.espaco(1) }}>
+          {bancos.map((b) => {
+            const ativo = b.numeroBanco === sel;
+            return (
+              <TouchableOpacity
+                key={b.numeroBanco}
+                onPress={() => setSel(b.numeroBanco)}
+                style={[
+                  estilos.chip,
+                  { borderColor: cores.borda, backgroundColor: ativo ? cores.primaria : cores.superficie2 },
+                ]}
+              >
+                <Text style={[estilos.chipTxt, { color: ativo ? "#fff" : cores.textoFraco }]} numberOfLines={1}>
+                  {b.nome}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </ScrollView>
+    </Card>
   );
 }
 
@@ -273,6 +366,144 @@ function ListaTitulos({
   );
 }
 
+// -------------------- Extrato (resumo financeiro: entradas/saidas por banco) --------------------
+
+function Extrato({
+  onVoltar,
+  topo,
+  base,
+  cores,
+  sessaoToken,
+}: {
+  onVoltar: () => void;
+  topo: number;
+  base: number;
+  cores: any;
+  sessaoToken?: string;
+}) {
+  const [bancos, setBancos] = useState<Banco[]>([]);
+  const [selecionados, setSelecionados] = useState<number[]>([]);
+  const [dados, setDados] = useState<ExtratoData | null>(null);
+  const [carregando, setCarregando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  // Lista os bancos; comeca com TODOS selecionados (extrato consolidado).
+  useEffect(() => {
+    if (!sessaoToken) return;
+    api
+      .bancos(sessaoToken)
+      .then((bs) => {
+        setBancos(bs);
+        setSelecionados(bs.map((b) => b.numeroBanco));
+      })
+      .catch(() => setErro("Não consegui carregar os bancos."));
+  }, [sessaoToken]);
+
+  const carregar = useCallback(async () => {
+    if (!sessaoToken || selecionados.length === 0) {
+      setDados(null);
+      return;
+    }
+    setCarregando(true);
+    setErro(null);
+    try {
+      setDados(await api.extrato(sessaoToken, selecionados, 90));
+    } catch {
+      setErro("Não consegui carregar o extrato.");
+    } finally {
+      setCarregando(false);
+    }
+  }, [sessaoToken, selecionados]);
+
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
+
+  function alternar(num: number) {
+    setSelecionados((atual) =>
+      atual.includes(num) ? atual.filter((x) => x !== num) : [...atual, num]
+    );
+  }
+
+  return (
+    <View style={{ flex: 1, backgroundColor: cores.fundo, paddingTop: topo + theme.espaco(1) }}>
+      <View style={estilos.topoLista}>
+        <TouchableOpacity onPress={onVoltar} style={{ padding: 4 }} accessibilityLabel="Voltar">
+          <Feather name="chevron-left" size={26} color={cores.texto} />
+        </TouchableOpacity>
+        <Text style={[estilos.tituloLista, { color: cores.texto }]}>Extrato (90 dias)</Text>
+        <View style={{ width: 26 }} />
+      </View>
+
+      {/* Seletor de bancos (varios) */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ maxHeight: 44 }}>
+        <View style={{ flexDirection: "row", gap: theme.espaco(1), paddingHorizontal: theme.espaco(2.5) }}>
+          {bancos.map((b) => {
+            const ativo = selecionados.includes(b.numeroBanco);
+            return (
+              <TouchableOpacity
+                key={b.numeroBanco}
+                onPress={() => alternar(b.numeroBanco)}
+                style={[estilos.chip, { borderColor: cores.borda, backgroundColor: ativo ? cores.primaria : cores.superficie2 }]}
+              >
+                <Text style={[estilos.chipTxt, { color: ativo ? "#fff" : cores.textoFraco }]} numberOfLines={1}>
+                  {b.nome}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </ScrollView>
+
+      {/* Totais */}
+      {dados ? (
+        <View style={estilos.totais}>
+          <View style={estilos.totalCol}>
+            <Text style={[estilos.totalLabel, { color: cores.textoFraco }]}>Entradas</Text>
+            <Text style={[estilos.totalVal, { color: cores.positivo }]}>{moeda(dados.totalEntradas)}</Text>
+          </View>
+          <View style={estilos.totalCol}>
+            <Text style={[estilos.totalLabel, { color: cores.textoFraco }]}>Saídas</Text>
+            <Text style={[estilos.totalVal, { color: cores.negativo }]}>{moeda(dados.totalSaidas)}</Text>
+          </View>
+          <View style={estilos.totalCol}>
+            <Text style={[estilos.totalLabel, { color: cores.textoFraco }]}>Resultado</Text>
+            <Text style={[estilos.totalVal, { color: dados.resultado >= 0 ? cores.positivo : cores.negativo }]}>
+              {moeda(dados.resultado)}
+            </Text>
+          </View>
+        </View>
+      ) : null}
+
+      {carregando ? (
+        <ActivityIndicator color={cores.primaria} size="large" style={{ marginTop: theme.espaco(6) }} />
+      ) : erro ? (
+        <Text style={[estilos.centroTxt, { color: cores.primaria }]}>{erro}</Text>
+      ) : !dados || dados.lancamentos.length === 0 ? (
+        <Text style={[estilos.centroTxt, { color: cores.textoApagado }]}>Sem movimento no período.</Text>
+      ) : (
+        <FlatList
+          data={dados.lancamentos}
+          keyExtractor={(l, i) => `${l.data}-${i}`}
+          contentContainerStyle={{ paddingHorizontal: theme.espaco(2.5), paddingBottom: base + theme.espaco(12) }}
+          ItemSeparatorComponent={() => <View style={{ height: theme.espaco(1) }} />}
+          renderItem={({ item }) => (
+            <Card style={estilos.lanc}>
+              <View style={{ flex: 1 }}>
+                <Text style={[estilos.lancDesc, { color: cores.texto }]}>{item.descricao}</Text>
+                <Text style={[estilos.lancData, { color: cores.textoFraco }]}>{dataBr(item.data)}</Text>
+              </View>
+              <Text style={[estilos.lancVal, { color: item.entrada ? cores.positivo : cores.negativo }]}>
+                {item.entrada ? "+" : "−"} {moeda(item.valor)}
+              </Text>
+            </Card>
+          )}
+        />
+      )}
+    </View>
+  );
+}
+
 function BotaoLista({
   icone,
   cor,
@@ -346,4 +577,24 @@ const estilos = StyleSheet.create({
   itemMeta: { flexDirection: "row", justifyContent: "space-between", marginTop: 6 },
   meta: { fontSize: theme.fonte.pequeno },
   obs: { fontSize: theme.fonte.pequeno, marginTop: 6, fontStyle: "italic" },
+  chip: {
+    paddingVertical: theme.espaco(0.75),
+    paddingHorizontal: theme.espaco(1.5),
+    borderRadius: theme.raio.pill,
+    borderWidth: 1,
+    maxWidth: 160,
+  },
+  chipTxt: { fontSize: theme.fonte.pequeno, fontFamily: theme.familia.semibold },
+  totais: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    paddingVertical: theme.espaco(1.5),
+    paddingHorizontal: theme.espaco(2.5),
+  },
+  totalCol: { alignItems: "center" },
+  totalVal: { fontSize: theme.fonte.corpo, fontFamily: theme.familia.extrabold, marginTop: 2 },
+  lanc: { flexDirection: "row", alignItems: "center", padding: theme.espaco(1.5) },
+  lancDesc: { fontSize: theme.fonte.corpo, fontFamily: theme.familia.bold },
+  lancData: { fontSize: theme.fonte.pequeno, marginTop: 2 },
+  lancVal: { fontSize: theme.fonte.corpo, fontFamily: theme.familia.extrabold },
 });

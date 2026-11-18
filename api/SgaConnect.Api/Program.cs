@@ -457,4 +457,68 @@ app.MapGet("/financeiro/vencidos", (HttpContext ctx, DescobridorEmpresas descobr
     return Results.Ok(new VencidosResponse(v.QtdReceber, v.TotalReceber, v.QtdPagar, v.TotalPagar));
 }).RequireAuthorization();
 
+// Bancos ativos da empresa (seletor do extrato/grafico de saldo).
+app.MapGet("/financeiro/bancos", (HttpContext ctx, DescobridorEmpresas descobridor) =>
+{
+    var erro = ResolverContexto(ctx, descobridor, out var empresa, out var codEmpresa);
+    if (erro is not null) return erro;
+    var repo = new RepositorioBancos(new LeitorSga(empresa!.CaminhoBanco));
+    var lista = repo.Listar(codEmpresa).Select(b => new BancoDto(b.NumeroBanco, b.Nome)).ToList();
+    return Results.Ok(lista);
+}).RequireAuthorization();
+
+// Extrato consolidado de 1+ bancos. ?bancos=1,2,3 &dias=90 (default 90).
+app.MapGet("/financeiro/extrato", (HttpContext ctx, DescobridorEmpresas descobridor, string? bancos, int? dias) =>
+{
+    var erro = ResolverContexto(ctx, descobridor, out var empresa, out var codEmpresa);
+    if (erro is not null) return erro;
+
+    var nums = (bancos ?? "")
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Where(s => int.TryParse(s, out _)).Select(int.Parse).Distinct().ToList();
+    if (nums.Count == 0) return Results.BadRequest(new { erro = "Informe ?bancos=NUM[,NUM...]" });
+
+    var n = Math.Clamp(dias ?? 90, 1, 730);
+    var fim = DateTime.Today.AddDays(1);
+    var inicio = DateTime.Today.AddDays(-n);
+
+    var repo = new RepositorioBancos(new LeitorSga(empresa!.CaminhoBanco));
+    var lanc = repo.Extrato(codEmpresa, nums, inicio, fim);
+    var entradas = lanc.Where(l => l.Entrada).Sum(l => l.Valor);
+    var saidas = lanc.Where(l => !l.Entrada).Sum(l => l.Valor);
+
+    return Results.Ok(new ExtratoResponse(
+        Inicio: inicio.ToString("yyyy-MM-dd"),
+        Fim: DateTime.Today.ToString("yyyy-MM-dd"),
+        TotalEntradas: entradas,
+        TotalSaidas: saidas,
+        Resultado: entradas - saidas,
+        Lancamentos: lanc
+            .OrderByDescending(l => l.Data) // mais recentes primeiro na lista
+            .Select(l => new LancamentoDto(l.Data.ToString("yyyy-MM-dd"), l.Descricao, l.Valor, l.Entrada))
+            .ToList()));
+}).RequireAuthorization();
+
+// Serie de saldo acumulado de UM banco (grafico estilo bolsa). ?banco=1 &dias=90.
+app.MapGet("/financeiro/saldo", (HttpContext ctx, DescobridorEmpresas descobridor, int? banco, int? dias) =>
+{
+    var erro = ResolverContexto(ctx, descobridor, out var empresa, out var codEmpresa);
+    if (erro is not null) return erro;
+    if (banco is null) return Results.BadRequest(new { erro = "Informe ?banco=NUMERO" });
+
+    var n = Math.Clamp(dias ?? 90, 7, 730);
+    var fim = DateTime.Today.AddDays(1);
+    var inicio = DateTime.Today.AddDays(-n);
+
+    var repo = new RepositorioBancos(new LeitorSga(empresa!.CaminhoBanco));
+    var pontos = repo.SerieSaldo(codEmpresa, banco.Value, inicio, fim);
+
+    return Results.Ok(new SaldoSerieResponse(
+        NumeroBanco: banco.Value,
+        Inicio: inicio.ToString("yyyy-MM-dd"),
+        Fim: DateTime.Today.ToString("yyyy-MM-dd"),
+        SaldoAtual: pontos.Count > 0 ? pontos[^1].Saldo : 0m,
+        Pontos: pontos.Select(p => new PontoSaldoDto(p.Data.ToString("yyyy-MM-dd"), p.Saldo)).ToList()));
+}).RequireAuthorization();
+
 app.Run();
