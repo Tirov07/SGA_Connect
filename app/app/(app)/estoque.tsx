@@ -204,7 +204,8 @@ function ListaItens({
 
 function CartaoItem({ item, cores, destacarSaldo }: { item: ItemEstoque; cores: any; destacarSaldo: boolean }) {
   const saldoBaixo = item.minimo > 0 && item.saldo <= item.minimo;
-  const corSaldo = destacarSaldo || saldoBaixo ? cores.primaria : cores.texto;
+  // Saldo negativo OU no/abaixo do minimo (ou tela de ponto de pedido) -> vermelho.
+  const corSaldo = item.saldo < 0 || destacarSaldo || saldoBaixo ? cores.negativo : cores.texto;
   return (
     <Card style={{ padding: theme.espaco(1.75) }}>
       <View style={estilos.itemTopo}>
