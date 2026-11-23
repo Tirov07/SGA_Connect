@@ -459,8 +459,8 @@ function BotaoLista({
 }
 
 const estilos = StyleSheet.create({
-  titulo: { fontSize: theme.fonte.titulo, fontFamily: theme.familia.extrabold, marginBottom: theme.espaco(2) },
-  cardTitulo: { fontSize: theme.fonte.secao, fontFamily: theme.familia.extrabold },
+  titulo: { fontSize: theme.fonte.titulo, fontFamily: theme.familia.extrabold, letterSpacing: theme.tracking.titulo, marginBottom: theme.espaco(2) },
+  cardTitulo: { fontSize: theme.fonte.secao, fontFamily: theme.familia.extrabold, letterSpacing: theme.tracking.titulo },
   cardSub: { fontSize: theme.fonte.pequeno, marginBottom: theme.espaco(1.5) },
   vazio: { fontSize: theme.fonte.corpo, paddingVertical: theme.espaco(3) },
   botao: {
@@ -490,7 +490,7 @@ const estilos = StyleSheet.create({
     paddingHorizontal: theme.espaco(2),
     marginBottom: theme.espaco(1),
   },
-  tituloLista: { fontSize: theme.fonte.secao, fontFamily: theme.familia.extrabold },
+  tituloLista: { fontSize: theme.fonte.secao, fontFamily: theme.familia.extrabold, letterSpacing: theme.tracking.titulo },
   resumoTopo: { alignItems: "center", marginBottom: theme.espaco(1.5) },
   resumoQtd: { fontSize: theme.fonte.secao, fontFamily: theme.familia.extrabold },
   resumoTotal: { fontSize: theme.fonte.pequeno, marginTop: 2 },
@@ -529,6 +529,6 @@ const estilos = StyleSheet.create({
   },
   mesTxt: { fontSize: theme.fonte.corpo, fontFamily: theme.familia.bold, minWidth: 160, textAlign: "center" },
   totalLabel: { fontSize: theme.fonte.pequeno, fontFamily: theme.familia.semibold },
-  totalValor: { fontSize: theme.fonte.titulo, fontFamily: theme.familia.extrabold, marginTop: 2 },
+  totalValor: { fontSize: theme.fonte.titulo, fontFamily: theme.familia.extrabold, letterSpacing: theme.tracking.numero, marginTop: 2 },
   totalSub: { fontSize: theme.fonte.pequeno, marginTop: 2 },
 });

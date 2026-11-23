@@ -37,12 +37,13 @@ const estilos = StyleSheet.create({
     fontSize: theme.fonte.pequeno,
     fontFamily: theme.familia.semibold,
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: theme.tracking.rotulo,
   },
   valor: {
     fontSize: theme.fonte.numeroCard,
     fontFamily: theme.familia.extrabold,
     marginTop: theme.espaco(1),
+    letterSpacing: theme.tracking.numero,
   },
   legenda: { fontSize: theme.fonte.pequeno, marginTop: theme.espaco(0.5) },
 });

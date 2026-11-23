@@ -82,7 +82,7 @@ export type NomeTema = keyof typeof paletas;
 export const theme = {
   raio: { sm: 10, md: 16, lg: 22, pill: 999 },
   espaco: (n: number) => n * 8,
-  fonte: { titulo: 28, secao: 18, corpo: 15, pequeno: 13, numeroCard: 30 },
+  fonte: { titulo: 30, secao: 19, corpo: 15, pequeno: 13, numeroCard: 32 },
   familia: {
     regular: "Manrope_400Regular",
     medio: "Manrope_500Medium",
@@ -90,6 +90,9 @@ export const theme = {
     bold: "Manrope_700Bold",
     extrabold: "Manrope_800ExtraBold",
   },
+  // Tracking (letter-spacing) por uso. Titulos/numeros grandes ficam "apertados"
+  // (negativo) como nos apps de referencia; rotulos pequenos em caixa alta abrem um pouco.
+  tracking: { titulo: -0.5, numero: -0.8, rotulo: 0.5 },
   // Cores do grafico (iguais nos dois temas): peca (ambar) x servico (teal).
   grafico: {
     peca: "#F5A623",
