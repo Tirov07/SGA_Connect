@@ -241,6 +241,72 @@ public sealed class RepositorioEstoque
         return dict;
     }
 
+    /// <summary>
+    /// Diagnostico TEMPORARIO da movimentacao: mostra onde a cadeia zera num periodo.
+    /// </summary>
+    public object DiagnosticoMovimentacao(int codEmpresa, DateTime inicio, DateTime fim)
+    {
+        int totalRmx = _leitor.EscalarInt(
+            "SELECT COUNT(*) FROM RMXEMPXEST WHERE CodEmpresa = ?", codEmpresa);
+
+        int rmxComNumos = _leitor.EscalarInt(
+            "SELECT COUNT(*) FROM RMXEMPXEST WHERE CodEmpresa = ? AND Numos IS NOT NULL AND Numos <> 0", codEmpresa);
+
+        // Saidas ligadas a OS fechada no periodo (sem filtro de GeraEstoque).
+        const string sqlJoin = """
+            SELECT COUNT(*) FROM RMXEMPXEST AS x INNER JOIN OS AS o ON x.Numos = o.NumOs
+            WHERE x.CodEmpresa = ?
+              AND o.DataFechamento IS NOT NULL
+              AND o.DataFechamento >= ? AND o.DataFechamento < ?
+              AND (x.Devolucao IS NULL OR x.Devolucao = 0)
+              AND (o.Cancelada IS NULL OR o.Cancelada = 0)
+            """;
+        int rmxNoPeriodo = _leitor.EscalarInt(sqlJoin, codEmpresa, inicio, fim);
+
+        // CONDPAGTO: total e quantos geram estoque (via Bool em C#).
+        var pagtos = _leitor.Consultar(
+            "SELECT CodigoPagto AS C, GeraEstoque AS G, Descricao AS D FROM CONDPAGTO WHERE CodEmpresa = ?",
+            r => new
+            {
+                cod = r["C"] is null or DBNull ? -1 : Convert.ToInt32(r["C"]),
+                geraCru = r["G"] is null or DBNull ? "(null)" : r["G"].ToString()!,
+                gera = Bool(r["G"]),
+                desc = Txt(r["D"])
+            }, codEmpresa);
+
+        var pagtosGeram = pagtos.Where(p => p.gera).Select(p => p.cod).ToHashSet();
+
+        // Saidas no periodo que passam no filtro GeraEstoque.
+        int noPeriodoGera = 0;
+        foreach (var r in _leitor.Consultar(sqlJoinComPagto(), r => (
+                     pagto: r["CodigoPagto"] is null or DBNull ? -1 : Convert.ToInt32(r["CodigoPagto"])),
+                     codEmpresa, inicio, fim))
+            if (pagtosGeram.Contains(r.pagto)) noPeriodoGera++;
+
+        return new
+        {
+            periodo = new { inicio, fim },
+            totalRmxDaEmpresa = totalRmx,
+            rmxComNumosPreenchido = rmxComNumos,
+            rmxLigadasOsFechadaNoPeriodo = rmxNoPeriodo,
+            condpagto_total = pagtos.Count,
+            condpagto_queGeramEstoque = pagtosGeram.Count,
+            // amostra dos valores crus de GeraEstoque para ver o formato real
+            amostraGeraEstoque = pagtos.Take(15).Select(p => new { p.cod, p.desc, valorCru = p.geraCru, interpretado = p.gera }),
+            saidasNoPeriodoQueGeramEstoque = noPeriodoGera
+        };
+    }
+
+    private static string sqlJoinComPagto() => """
+        SELECT o.CodigoPagto AS CodigoPagto
+        FROM RMXEMPXEST AS x INNER JOIN OS AS o ON x.Numos = o.NumOs
+        WHERE x.CodEmpresa = ?
+          AND o.DataFechamento IS NOT NULL
+          AND o.DataFechamento >= ? AND o.DataFechamento < ?
+          AND (x.Devolucao IS NULL OR x.Devolucao = 0)
+          AND (o.Cancelada IS NULL OR o.Cancelada = 0)
+        """;
+
     private static string Txt(object? v) => v is null or DBNull ? "" : v.ToString()!.Trim();
     private static decimal Dec(object? v) => v is null or DBNull ? 0m : Convert.ToDecimal(v);
 

@@ -672,4 +672,18 @@ app.MapGet("/estoque/movimentacao", (HttpContext ctx, DescobridorEmpresas descob
         Itens: itens));
 }).RequireAuthorization();
 
+// Diagnostico TEMPORARIO da movimentacao de estoque: mostra onde a cadeia zera.
+// ?mes=AAAA-MM (default mes atual).
+app.MapGet("/diagnostico/movimentacao", (HttpContext ctx, DescobridorEmpresas descobridor, string? mes) =>
+{
+    var erro = ResolverContexto(ctx, descobridor, out var empresa, out var codEmpresa);
+    if (erro is not null) return erro;
+    var mm = ParseMes(mes);
+    if (mm is null) return Results.BadRequest(new { erro = "Use ?mes=AAAA-MM." });
+    var inicio = new DateTime(mm.Value.ano, mm.Value.mes, 1);
+    var fim = inicio.AddMonths(1);
+    var repo = new RepositorioEstoque(new LeitorSga(empresa!.CaminhoBanco));
+    return Results.Ok(repo.DiagnosticoMovimentacao(codEmpresa, inicio, fim));
+}).RequireAuthorization();
+
 app.Run();
