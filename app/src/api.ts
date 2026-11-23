@@ -147,6 +147,43 @@ export type OsResumo = {
   linhas: OsResumoLinha[];
 };
 
+// ---------------- Estoque ----------------
+
+export type ItemEstoque = {
+  codItem: number;
+  descricao: string;
+  codigoFabricante: string;
+  codigoInterno: string;
+  referencia: string;
+  precoVenda: number;
+  minimo: number;
+  saldo: number;
+};
+
+export type ItensEstoque = {
+  quantidade: number;
+  itens: ItemEstoque[];
+};
+
+export type ItemVendido = {
+  codItem: number;
+  descricao: string;
+  codigoFabricante: string;
+  codigoInterno: string;
+  referencia: string;
+  quantidade: number;
+  valorTotal: number;
+};
+
+export type Movimentacao = {
+  inicio: string;
+  fim: string;
+  quantidade: number;
+  totalQuantidade: number;
+  totalValor: number;
+  itens: ItemVendido[];
+};
+
 class ApiError extends Error {
   constructor(public status: number, message: string) {
     super(message);
@@ -291,6 +328,38 @@ export const api = {
         ? `periodo=dia&data=${chave}`
         : `periodo=mes&mes=${chave}`;
     const resp = await fetch(`${API_URL}/osv/resumo?${q}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return tratar(resp);
+  },
+
+  // ---------------- Estoque ----------------
+
+  /** Lista de itens ativos com saldo calculado. */
+  async estoqueItens(token: string): Promise<ItensEstoque> {
+    const resp = await fetch(`${API_URL}/estoque/itens`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return tratar(resp);
+  },
+
+  /** Itens em ponto de pedido (saldo <= minimo, minimo > 0). */
+  async estoquePontoPedido(token: string): Promise<ItensEstoque> {
+    const resp = await fetch(`${API_URL}/estoque/ponto-pedido`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return tratar(resp);
+  },
+
+  /** Movimentacao: itens vendidos no periodo por quantidade. */
+  async estoqueMovimentacao(
+    token: string,
+    periodo: "dia" | "mes",
+    chave: string
+  ): Promise<Movimentacao> {
+    const q =
+      periodo === "dia" ? `periodo=dia&data=${chave}` : `periodo=mes&mes=${chave}`;
+    const resp = await fetch(`${API_URL}/estoque/movimentacao?${q}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return tratar(resp);
