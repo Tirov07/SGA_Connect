@@ -550,7 +550,7 @@ function BotaoLista({
 }
 
 const estilos = StyleSheet.create({
-  titulo: { fontSize: theme.fonte.titulo, fontFamily: theme.familia.extrabold, marginBottom: theme.espaco(2) },
+  titulo: { fontSize: theme.fonte.titulo, fontFamily: theme.familia.extrabold, letterSpacing: theme.tracking.titulo, marginBottom: theme.espaco(2) },
   erro: { marginBottom: theme.espaco(1.5) },
   linha: { flexDirection: "row", gap: theme.espaco(1.5), marginBottom: theme.espaco(1.5) },
   cardTitulo: { fontSize: theme.fonte.corpo, fontFamily: theme.familia.bold, marginBottom: theme.espaco(1.5) },
@@ -578,7 +578,7 @@ const estilos = StyleSheet.create({
     paddingHorizontal: theme.espaco(2),
     marginBottom: theme.espaco(1),
   },
-  tituloLista: { fontSize: theme.fonte.secao, fontFamily: theme.familia.extrabold },
+  tituloLista: { fontSize: theme.fonte.secao, fontFamily: theme.familia.extrabold, letterSpacing: theme.tracking.titulo },
   mesBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -588,7 +588,7 @@ const estilos = StyleSheet.create({
   },
   mesTxt: { fontSize: theme.fonte.corpo, fontFamily: theme.familia.bold, minWidth: 150, textAlign: "center" },
   totalLabel: { fontSize: theme.fonte.pequeno, fontFamily: theme.familia.semibold },
-  totalValor: { fontSize: theme.fonte.titulo, fontFamily: theme.familia.extrabold, marginTop: 2 },
+  totalValor: { fontSize: theme.fonte.titulo, fontFamily: theme.familia.extrabold, letterSpacing: theme.tracking.numero, marginTop: 2 },
   centroTxt: { textAlign: "center", marginTop: theme.espaco(4), fontSize: theme.fonte.corpo },
   itemTopo: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: theme.espaco(1) },
   nome: { flex: 1, fontSize: theme.fonte.corpo, fontFamily: theme.familia.bold },

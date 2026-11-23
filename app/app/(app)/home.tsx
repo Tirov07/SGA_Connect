@@ -128,7 +128,7 @@ const estilos = StyleSheet.create({
     alignItems: "center",
     marginBottom: theme.espaco(2),
   },
-  ola: { fontSize: theme.fonte.titulo, fontFamily: theme.familia.extrabold },
+  ola: { fontSize: theme.fonte.titulo, fontFamily: theme.familia.extrabold, letterSpacing: theme.tracking.titulo },
   empresa: {
     fontSize: theme.fonte.pequeno,
     fontFamily: theme.familia.bold,
@@ -136,7 +136,7 @@ const estilos = StyleSheet.create({
     marginTop: 2,
   },
   graficoCard: { marginBottom: theme.espaco(2) },
-  secaoTitulo: { fontSize: theme.fonte.secao, fontFamily: theme.familia.extrabold },
+  secaoTitulo: { fontSize: theme.fonte.secao, fontFamily: theme.familia.extrabold, letterSpacing: theme.tracking.titulo },
   secaoSub: { fontSize: theme.fonte.pequeno, marginBottom: theme.espaco(1.5) },
   vazio: { fontSize: theme.fonte.corpo, paddingVertical: theme.espaco(3) },
   linha: { flexDirection: "row", gap: theme.espaco(1.5), marginBottom: theme.espaco(1.5) },

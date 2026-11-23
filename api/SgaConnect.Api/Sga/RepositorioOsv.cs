@@ -151,22 +151,25 @@ public sealed class RepositorioOsv
     {
         var inicio = DateTime.Today.AddYears(-1);
         var fim = DateTime.Today.AddDays(1);
+        // EmitirLaudo no SGA e TEXTO ('S'/'N'), nao booleano: nao da para usar IIF() no SQL
+        // (qualquer string nao-vazia e "verdade" no Access). Agrupamos por dia + valor cru
+        // do campo e classificamos com/sem laudo em C# via Bool().
         const string sql = """
             SELECT DateValue(o.DataAbertura) AS D,
-                   IIF(o.EmitirLaudo, 1, 0) AS Laudo,
+                   o.EmitirLaudo AS Laudo,
                    COUNT(*) AS Qtd
             FROM OS AS o
             WHERE o.CodEmpresa = ?
               AND o.DataAbertura IS NOT NULL
               AND o.DataAbertura >= ? AND o.DataAbertura < ?
               AND (o.Cancelada IS NULL OR o.Cancelada = 0)
-            GROUP BY DateValue(o.DataAbertura), IIF(o.EmitirLaudo, 1, 0)
+            GROUP BY DateValue(o.DataAbertura), o.EmitirLaudo
             """;
 
         var porData = new Dictionary<DateTime, (int com, int sem)>();
         foreach (var r in _leitor.Consultar(sql, r => (
                      data: Convert.ToDateTime(r["D"]).Date,
-                     laudo: Convert.ToInt32(r["Laudo"]) != 0,
+                     laudo: Bool(r["Laudo"]),
                      qtd: Convert.ToInt32(r["Qtd"])), codEmpresa, inicio, fim))
         {
             var a = porData.GetValueOrDefault(r.data);
@@ -291,6 +294,23 @@ public sealed class RepositorioOsv
 
     private static string Txt(object? v) => v is null or DBNull ? "" : v.ToString()!.Trim();
     private static decimal Dec(object? v) => v is null or DBNull ? 0m : Convert.ToDecimal(v);
-    private static bool Bool(object? v) => v is not (null or DBNull) && Convert.ToBoolean(v);
     private static DateTime? Data(object? v) => v is null or DBNull ? null : Convert.ToDateTime(v);
+
+    /// <summary>
+    /// Interpreta "verdade" tolerando os formatos que o SGA usa no mesmo campo:
+    ///  - texto 'S'/'N' (Sim/Nao) ou 'T'/'F' (True/False) — o caso do OS.EmitirLaudo;
+    ///  - booleano real (True/False);
+    ///  - numero (-1/0 do Access, ou 1/0).
+    /// </summary>
+    private static bool Bool(object? v)
+    {
+        if (v is null or DBNull) return false;
+        if (v is bool b) return b;
+        if (v is string s)
+        {
+            s = s.Trim();
+            return s.Length > 0 && (s[0] is 'S' or 's' or 'T' or 't' or '1' or 'V' or 'v' || s == "-1");
+        }
+        try { return Convert.ToDouble(v) != 0; } catch { return false; }
+    }
 }
