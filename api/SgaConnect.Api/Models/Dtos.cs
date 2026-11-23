@@ -157,3 +157,38 @@ public sealed record OsResumoResponse(
     decimal TotalServico,
     decimal TotalGeral,
     IReadOnlyList<OsResumoLinhaDto> Linhas);
+
+// ---------------- Estoque ----------------
+
+/// <summary>Item de estoque (lista e ponto de pedido).</summary>
+public sealed record ItemEstoqueDto(
+    int CodItem,
+    string Descricao,
+    string CodigoFabricante,
+    string CodigoInterno,
+    string Referencia,
+    decimal PrecoVenda,
+    decimal Minimo,
+    decimal Saldo);
+
+public sealed record ItensEstoqueResponse(
+    int Quantidade,
+    IReadOnlyList<ItemEstoqueDto> Itens);
+
+/// <summary>Item vendido no periodo (movimentacao).</summary>
+public sealed record ItemVendidoDto(
+    int CodItem,
+    string Descricao,
+    string CodigoFabricante,
+    string CodigoInterno,
+    string Referencia,
+    decimal Quantidade,
+    decimal ValorTotal);
+
+public sealed record MovimentacaoResponse(
+    string Inicio,
+    string Fim,
+    int Quantidade,
+    decimal TotalQuantidade,
+    decimal TotalValor,
+    IReadOnlyList<ItemVendidoDto> Itens);

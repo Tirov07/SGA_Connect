@@ -609,4 +609,67 @@ app.MapGet("/osv/resumo", (HttpContext ctx, DescobridorEmpresas descobridor, str
         Linhas: linhas));
 }).RequireAuthorization();
 
+// ---------------- Estoque ----------------
+
+static ItemEstoqueDto MapItem(RepositorioEstoque.ItemEstoque i) =>
+    new(i.CodItem, i.Descricao, i.CodigoFabricante, i.CodigoInterno, i.Referencia, i.PrecoVenda, i.Minimo, i.Saldo);
+
+// Parte 1: lista de itens ativos com saldo calculado.
+app.MapGet("/estoque/itens", (HttpContext ctx, DescobridorEmpresas descobridor) =>
+{
+    var erro = ResolverContexto(ctx, descobridor, out var empresa, out var codEmpresa);
+    if (erro is not null) return erro;
+    var repo = new RepositorioEstoque(new LeitorSga(empresa!.CaminhoBanco));
+    var itens = repo.ListarItens(codEmpresa).Select(MapItem).ToList();
+    return Results.Ok(new ItensEstoqueResponse(itens.Count, itens));
+}).RequireAuthorization();
+
+// Parte 3: itens em ponto de pedido (Minimo > 0 e saldo <= Minimo).
+app.MapGet("/estoque/ponto-pedido", (HttpContext ctx, DescobridorEmpresas descobridor) =>
+{
+    var erro = ResolverContexto(ctx, descobridor, out var empresa, out var codEmpresa);
+    if (erro is not null) return erro;
+    var repo = new RepositorioEstoque(new LeitorSga(empresa!.CaminhoBanco));
+    var itens = repo.PontoDePedido(codEmpresa).Select(MapItem).ToList();
+    return Results.Ok(new ItensEstoqueResponse(itens.Count, itens));
+}).RequireAuthorization();
+
+// Parte 2: movimentacao (itens vendidos no periodo por quantidade).
+//   ?periodo=dia&data=AAAA-MM-DD   ou   ?periodo=mes&mes=AAAA-MM (default mes atual)
+app.MapGet("/estoque/movimentacao", (HttpContext ctx, DescobridorEmpresas descobridor, string? periodo, string? data, string? mes) =>
+{
+    var erro = ResolverContexto(ctx, descobridor, out var empresa, out var codEmpresa);
+    if (erro is not null) return erro;
+
+    DateTime inicio, fim;
+    if (string.Equals(periodo, "dia", StringComparison.OrdinalIgnoreCase))
+    {
+        if (!DateTime.TryParse(data, out var d))
+            return Results.BadRequest(new { erro = "Informe ?data=AAAA-MM-DD para periodo=dia." });
+        inicio = d.Date;
+        fim = inicio.AddDays(1);
+    }
+    else
+    {
+        var mm = ParseMes(mes);
+        if (mm is null) return Results.BadRequest(new { erro = "Parametro 'mes' invalido. Use AAAA-MM." });
+        inicio = new DateTime(mm.Value.ano, mm.Value.mes, 1);
+        fim = inicio.AddMonths(1);
+    }
+
+    var repo = new RepositorioEstoque(new LeitorSga(empresa!.CaminhoBanco));
+    var itens = repo.ItensVendidos(codEmpresa, inicio, fim)
+        .Select(v => new ItemVendidoDto(
+            v.CodItem, v.Descricao, v.CodigoFabricante, v.CodigoInterno, v.Referencia, v.Quantidade, v.ValorTotal))
+        .ToList();
+
+    return Results.Ok(new MovimentacaoResponse(
+        Inicio: inicio.ToString("yyyy-MM-dd"),
+        Fim: fim.AddDays(-1).ToString("yyyy-MM-dd"),
+        Quantidade: itens.Count,
+        TotalQuantidade: itens.Sum(i => i.Quantidade),
+        TotalValor: itens.Sum(i => i.ValorTotal),
+        Itens: itens));
+}).RequireAuthorization();
+
 app.Run();
