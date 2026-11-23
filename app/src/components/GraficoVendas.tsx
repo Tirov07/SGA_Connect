@@ -8,8 +8,10 @@ import { useTema } from "../tema";
 import { moeda } from "../format";
 import { VendaDia } from "../api";
 
-const COR_PECA = theme.grafico.peca; // ambar
-const COR_SERVICO = theme.grafico.servico; // teal
+// Mesma dupla do grafico de OSv (combina com a identidade do sistema):
+// servico = vermelho suave da marca (destaque), peca = cinza-azulado neutro.
+const COR_PECA = theme.grafico.semLaudo; // cinza-azulado
+const COR_SERVICO = theme.grafico.laudo; // vermelho suave
 
 const ALTURA = 140; // altura da area das barras (mais baixo)
 const PAD_TOPO = 8;
