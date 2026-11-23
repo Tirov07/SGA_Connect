@@ -86,12 +86,15 @@ public sealed class RepositorioEstoque
         var pagtosGeram = CodigosPagtoQueGeramEstoque(codEmpresa);
         if (pagtosGeram.Count == 0) return new List<ItemVendido>();
 
-        // Saidas (nao devolucao) ligadas a OS fechada no periodo. Trazemos o CodigoPagto da
-        // OS para filtrar GeraEstoque em memoria.
+        // Saidas (nao devolucao) ligadas a OS fechada no periodo. A ligacao a OS e via RQM
+        // (RMXEMPXEST.Numos vem vazio nesta base): RMXEMPXEST.NumRequisicao = RQM.NumRequisicao
+        // e RQM.NumOs = OS.NumOs (mesmo caminho do grafico de vendas). Trazemos o CodigoPagto
+        // da OS para filtrar GeraEstoque em memoria.
         const string sql = """
             SELECT x.CodItem AS CodItem, x.Quantidade AS Qtd, x.ValorUnit AS ValorUnit,
                    o.CodigoPagto AS CodigoPagto
-            FROM RMXEMPXEST AS x INNER JOIN OS AS o ON x.Numos = o.NumOs
+            FROM (RMXEMPXEST AS x INNER JOIN RQM AS q ON x.NumRequisicao = q.NumRequisicao)
+                 INNER JOIN OS AS o ON q.NumOs = o.NumOs
             WHERE x.CodEmpresa = ?
               AND o.DataFechamento IS NOT NULL
               AND o.DataFechamento >= ? AND o.DataFechamento < ?
@@ -185,7 +188,8 @@ public sealed class RepositorioEstoque
             const string sqlSaidas = """
                 SELECT x.CodItem AS CodItem, x.Quantidade AS Qtd,
                        x.Devolucao AS Dev, o.CodigoPagto AS CodigoPagto
-                FROM RMXEMPXEST AS x INNER JOIN OS AS o ON x.Numos = o.NumOs
+                FROM (RMXEMPXEST AS x INNER JOIN RQM AS q ON x.NumRequisicao = q.NumRequisicao)
+                     INNER JOIN OS AS o ON q.NumOs = o.NumOs
                 WHERE x.CodEmpresa = ?
                   AND (o.Cancelada IS NULL OR o.Cancelada = 0)
                 """;
@@ -249,12 +253,14 @@ public sealed class RepositorioEstoque
         int totalRmx = _leitor.EscalarInt(
             "SELECT COUNT(*) FROM RMXEMPXEST WHERE CodEmpresa = ?", codEmpresa);
 
-        int rmxComNumos = _leitor.EscalarInt(
-            "SELECT COUNT(*) FROM RMXEMPXEST WHERE CodEmpresa = ? AND Numos IS NOT NULL AND Numos <> 0", codEmpresa);
+        int rmxComReq = _leitor.EscalarInt(
+            "SELECT COUNT(*) FROM RMXEMPXEST WHERE CodEmpresa = ? AND NumRequisicao IS NOT NULL AND NumRequisicao <> 0", codEmpresa);
 
-        // Saidas ligadas a OS fechada no periodo (sem filtro de GeraEstoque).
+        // Saidas ligadas a OS fechada no periodo via RQM (sem filtro de GeraEstoque).
         const string sqlJoin = """
-            SELECT COUNT(*) FROM RMXEMPXEST AS x INNER JOIN OS AS o ON x.Numos = o.NumOs
+            SELECT COUNT(*)
+            FROM (RMXEMPXEST AS x INNER JOIN RQM AS q ON x.NumRequisicao = q.NumRequisicao)
+                 INNER JOIN OS AS o ON q.NumOs = o.NumOs
             WHERE x.CodEmpresa = ?
               AND o.DataFechamento IS NOT NULL
               AND o.DataFechamento >= ? AND o.DataFechamento < ?
@@ -287,7 +293,7 @@ public sealed class RepositorioEstoque
         {
             periodo = new { inicio, fim },
             totalRmxDaEmpresa = totalRmx,
-            rmxComNumosPreenchido = rmxComNumos,
+            rmxComNumRequisicaoPreenchido = rmxComReq,
             rmxLigadasOsFechadaNoPeriodo = rmxNoPeriodo,
             condpagto_total = pagtos.Count,
             condpagto_queGeramEstoque = pagtosGeram.Count,
@@ -299,7 +305,8 @@ public sealed class RepositorioEstoque
 
     private static string sqlJoinComPagto() => """
         SELECT o.CodigoPagto AS CodigoPagto
-        FROM RMXEMPXEST AS x INNER JOIN OS AS o ON x.Numos = o.NumOs
+        FROM (RMXEMPXEST AS x INNER JOIN RQM AS q ON x.NumRequisicao = q.NumRequisicao)
+             INNER JOIN OS AS o ON q.NumOs = o.NumOs
         WHERE x.CodEmpresa = ?
           AND o.DataFechamento IS NOT NULL
           AND o.DataFechamento >= ? AND o.DataFechamento < ?
