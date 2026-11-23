@@ -16,7 +16,7 @@ type IconeNome = React.ComponentProps<typeof Feather>["name"];
 const ABAS: { nome: string; rotulo: string; icone: IconeNome; central?: boolean }[] = [
   { nome: "osv", rotulo: "OSv", icone: "clipboard" },
   { nome: "financeiro", rotulo: "Financeiro", icone: "dollar-sign" },
-  { nome: "home", rotulo: "Menu", icone: "grid", central: true },
+  { nome: "home", rotulo: "Home", icone: "home", central: true },
   { nome: "estoque", rotulo: "Estoque", icone: "box" },
   { nome: "tecnico", rotulo: "Técnico", icone: "tool" },
 ];

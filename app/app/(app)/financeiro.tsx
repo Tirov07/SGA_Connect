@@ -27,6 +27,10 @@ import { moeda, dataBr, rotuloMes, somarMes, chaveMes } from "../../src/format";
 import { Card } from "../../src/components/Card";
 import { StatCard } from "../../src/components/StatCard";
 import { GraficoSaldo } from "../../src/components/GraficoSaldo";
+import { TelaHeader } from "../../src/components/TelaHeader";
+import { EstadoVazio } from "../../src/components/EstadoVazio";
+import { SkeletonLista } from "../../src/components/Skeleton";
+import { CardTotal } from "../../src/components/CardTotal";
 
 type Vista = "painel" | "receber" | "pagar" | "extrato";
 
@@ -308,15 +312,7 @@ function ListaTitulos({
 
   return (
     <View style={{ flex: 1, backgroundColor: cores.fundo, paddingTop: topo + theme.espaco(1) }}>
-      <View style={estilos.topoLista}>
-        <TouchableOpacity onPress={onVoltar} style={{ padding: 4 }} accessibilityLabel="Voltar">
-          <Feather name="chevron-left" size={26} color={cores.texto} />
-        </TouchableOpacity>
-        <Text style={[estilos.tituloLista, { color: cores.texto }]}>
-          {ehReceber ? "Recebimentos" : "Pagamentos"}
-        </Text>
-        <View style={{ width: 26 }} />
-      </View>
+      <TelaHeader titulo={ehReceber ? "Recebimentos" : "Pagamentos"} onVoltar={onVoltar} />
 
       <View style={estilos.mesBar}>
         <TouchableOpacity onPress={() => mudarMes(-1)} accessibilityLabel="Mês anterior">
@@ -334,11 +330,14 @@ function ListaTitulos({
       </View>
 
       {carregando ? (
-        <ActivityIndicator color={cores.primaria} size="large" style={{ marginTop: theme.espaco(6) }} />
+        <SkeletonLista linhas={5} />
       ) : erro ? (
-        <Text style={[estilos.centroTxt, { color: cores.primaria }]}>{erro}</Text>
+        <EstadoVazio icone="alert-circle" titulo={erro} subtitulo="Volte e tente de novo." />
       ) : itens.length === 0 ? (
-        <Text style={[estilos.centroTxt, { color: cores.textoApagado }]}>Nenhum título em aberto neste mês.</Text>
+        <EstadoVazio
+          icone={ehReceber ? "arrow-down-circle" : "arrow-up-circle"}
+          titulo="Nenhum título em aberto neste mês"
+        />
       ) : (
         <FlatList
           data={itens}
@@ -427,13 +426,7 @@ function Extrato({
 
   return (
     <View style={{ flex: 1, backgroundColor: cores.fundo, paddingTop: topo + theme.espaco(1) }}>
-      <View style={estilos.topoLista}>
-        <TouchableOpacity onPress={onVoltar} style={{ padding: 4 }} accessibilityLabel="Voltar">
-          <Feather name="chevron-left" size={26} color={cores.texto} />
-        </TouchableOpacity>
-        <Text style={[estilos.tituloLista, { color: cores.texto }]}>Extrato (90 dias)</Text>
-        <View style={{ width: 26 }} />
-      </View>
+      <TelaHeader titulo="Extrato (90 dias)" onVoltar={onVoltar} />
 
       {/* Seletor de bancos (varios) */}
       <ScrollView
@@ -483,11 +476,11 @@ function Extrato({
       ) : null}
 
       {carregando ? (
-        <ActivityIndicator color={cores.primaria} size="large" style={{ marginTop: theme.espaco(6) }} />
+        <SkeletonLista linhas={5} />
       ) : erro ? (
-        <Text style={[estilos.centroTxt, { color: cores.primaria }]}>{erro}</Text>
+        <EstadoVazio icone="alert-circle" titulo={erro} subtitulo="Volte e tente de novo." />
       ) : !dados || dados.lancamentos.length === 0 ? (
-        <Text style={[estilos.centroTxt, { color: cores.textoApagado }]}>Sem movimento no período.</Text>
+        <EstadoVazio icone="file-text" titulo="Sem movimento no período" />
       ) : (
         <FlatList
           data={dados.lancamentos}

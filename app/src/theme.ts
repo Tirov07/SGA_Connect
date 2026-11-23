@@ -18,6 +18,8 @@ export type Paleta = {
   textoApagado: string;
   primaria: string;
   primariaEscura: string;
+  /** Fundo sutil da cor primaria, para estado "ativo" de chips/segmentos sem vermelho cheio. */
+  primariaSuave: string;
   positivo: string;
   negativo: string;
   atencao: string;
@@ -41,6 +43,7 @@ const escuro: Paleta = {
   textoApagado: "#6B6B73",
   primaria: "#E11D2A",
   primariaEscura: "#B5151F",
+  primariaSuave: "#3A1D22",
   positivo: "#35C759",
   negativo: "#E11D2A",
   atencao: "#F5A623",
@@ -64,6 +67,7 @@ const claro: Paleta = {
   textoApagado: "#9A9AA3",
   primaria: "#E11D2A",
   primariaEscura: "#B5151F",
+  primariaSuave: "#FBE7E9",
   positivo: "#1E9E4A",
   negativo: "#E11D2A",
   atencao: "#C77B12",
@@ -93,12 +97,16 @@ export const theme = {
   // Tracking (letter-spacing) por uso. Titulos/numeros grandes ficam "apertados"
   // (negativo) como nos apps de referencia; rotulos pequenos em caixa alta abrem um pouco.
   tracking: { titulo: -0.5, numero: -0.8, rotulo: 0.5 },
-  // Cores do grafico (iguais nos dois temas): peca (ambar) x servico (teal).
+  // Cores do grafico (iguais nos dois temas).
   grafico: {
+    // Home: peca (ambar) x servico (teal).
     peca: "#F5A623",
     pecaEscura: "#B9791A",
     servico: "#2DD4BF",
     servicoEscura: "#1A9183",
+    // OSv aberturas: com laudo (vermelho suave da marca) x sem laudo (cinza-azulado).
+    laudo: "#E85D6B",
+    semLaudo: "#9AA3B2",
   },
 } as const;
 

@@ -33,8 +33,8 @@ export function GraficoAberturas({
   const [sel, setSel] = useState<number | null>(null);
   const [largura, setLargura] = useState(0);
 
-  const corCom = cores.primaria;
-  const corSem = cores.atencao;
+  const corCom = theme.grafico.laudo;
+  const corSem = theme.grafico.semLaudo;
 
   const maxTotal = useMemo(() => Math.max(1, ...dias.map((d) => d.total)), [dias]);
 

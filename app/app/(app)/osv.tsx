@@ -25,6 +25,10 @@ import { theme } from "../../src/theme";
 import { moeda, dataBr, diaMes, rotuloMes, somarMes, chaveMes, chaveDia } from "../../src/format";
 import { Card } from "../../src/components/Card";
 import { GraficoAberturas } from "../../src/components/GraficoAberturas";
+import { TelaHeader } from "../../src/components/TelaHeader";
+import { EstadoVazio } from "../../src/components/EstadoVazio";
+import { SkeletonLista } from "../../src/components/Skeleton";
+import { CardTotal } from "../../src/components/CardTotal";
 
 type Vista = "painel" | "fechadas" | "abertas" | "resumo";
 
@@ -131,12 +135,12 @@ function Painel({
                 <View style={estilos.detLinha}>
                   <View style={estilos.detCol}>
                     <Text style={[estilos.detLabel, { color: cores.textoFraco }]}>Com laudo</Text>
-                    <Text style={[estilos.detValor, { color: cores.primaria }]}>{selDia.comLaudo}</Text>
+                    <Text style={[estilos.detValor, { color: theme.grafico.laudo }]}>{selDia.comLaudo}</Text>
                   </View>
                   <View style={[estilos.detDiv, { backgroundColor: cores.borda }]} />
                   <View style={estilos.detCol}>
                     <Text style={[estilos.detLabel, { color: cores.textoFraco }]}>Sem laudo</Text>
-                    <Text style={[estilos.detValor, { color: cores.atencao }]}>{selDia.semLaudo}</Text>
+                    <Text style={[estilos.detValor, { color: theme.grafico.semLaudo }]}>{selDia.semLaudo}</Text>
                   </View>
                 </View>
               </View>
@@ -193,17 +197,9 @@ function ListaOs({
 
   return (
     <View style={{ flex: 1, backgroundColor: cores.fundo, paddingTop: topo + theme.espaco(1) }}>
-      <View style={estilos.topoLista}>
-        <TouchableOpacity onPress={onVoltar} style={{ padding: 4 }} accessibilityLabel="Voltar">
-          <Feather name="chevron-left" size={26} color={cores.texto} />
-        </TouchableOpacity>
-        <Text style={[estilos.tituloLista, { color: cores.texto }]}>
-          {ehFechadas ? "Fechadas (7 dias)" : "Em aberto"}
-        </Text>
-        <View style={{ width: 26 }} />
-      </View>
+      <TelaHeader titulo={ehFechadas ? "Fechadas (7 dias)" : "Em aberto"} onVoltar={onVoltar} />
 
-      {dados ? (
+      {dados && dados.itens.length > 0 ? (
         <View style={estilos.resumoTopo}>
           <Text style={[estilos.resumoQtd, { color: cores.texto }]}>{dados.quantidade} OS</Text>
           <Text style={[estilos.resumoTotal, { color: cores.textoFraco }]}>Total {moeda(dados.totalGeral)}</Text>
@@ -211,11 +207,14 @@ function ListaOs({
       ) : null}
 
       {carregando ? (
-        <ActivityIndicator color={cores.primaria} size="large" style={{ marginTop: theme.espaco(6) }} />
+        <SkeletonLista linhas={5} />
       ) : erro ? (
-        <Text style={[estilos.centroTxt, { color: cores.primaria }]}>{erro}</Text>
+        <EstadoVazio icone="alert-circle" titulo={erro} subtitulo="Arraste para baixo ou volte e tente de novo." />
       ) : !dados || dados.itens.length === 0 ? (
-        <Text style={[estilos.centroTxt, { color: cores.textoApagado }]}>Nenhuma OS encontrada.</Text>
+        <EstadoVazio
+          icone="clipboard"
+          titulo={ehFechadas ? "Nenhuma OS fechada nos últimos 7 dias" : "Nenhuma OS em aberto"}
+        />
       ) : (
         <FlatList
           data={dados.itens}
@@ -231,6 +230,7 @@ function ListaOs({
 
 function CartaoOs({ item, cores }: { item: OsItem; cores: any }) {
   return (
+    <TouchableOpacity activeOpacity={0.6}>
     <Card style={{ padding: theme.espaco(1.75) }}>
       <View style={estilos.osTopo}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: theme.espaco(1), flex: 1 }}>
@@ -270,6 +270,7 @@ function CartaoOs({ item, cores }: { item: OsItem; cores: any }) {
         </Text>
       </View>
     </Card>
+    </TouchableOpacity>
   );
 }
 
@@ -331,13 +332,7 @@ function ResumoFinanceiro({
 
   return (
     <View style={{ flex: 1, backgroundColor: cores.fundo, paddingTop: topo + theme.espaco(1) }}>
-      <View style={estilos.topoLista}>
-        <TouchableOpacity onPress={onVoltar} style={{ padding: 4 }} accessibilityLabel="Voltar">
-          <Feather name="chevron-left" size={26} color={cores.texto} />
-        </TouchableOpacity>
-        <Text style={[estilos.tituloLista, { color: cores.texto }]}>Resumo financeiro</Text>
-        <View style={{ width: 26 }} />
-      </View>
+      <TelaHeader titulo="Resumo financeiro" onVoltar={onVoltar} />
 
       {/* Alternador dia / mes */}
       <View style={estilos.segmento}>
@@ -349,10 +344,13 @@ function ResumoFinanceiro({
               onPress={() => setModo(m)}
               style={[
                 estilos.segBtn,
-                { backgroundColor: ativo ? cores.primaria : cores.superficie2, borderColor: cores.borda },
+                {
+                  backgroundColor: ativo ? cores.primariaSuave : cores.superficie2,
+                  borderColor: ativo ? cores.primaria : cores.borda,
+                },
               ]}
             >
-              <Text style={[estilos.segTxt, { color: ativo ? "#fff" : cores.textoFraco }]}>
+              <Text style={[estilos.segTxt, { color: ativo ? cores.primaria : cores.textoFraco }]}>
                 {m === "dia" ? "Por dia" : "Por mês"}
               </Text>
             </TouchableOpacity>
@@ -373,21 +371,21 @@ function ResumoFinanceiro({
         </TouchableOpacity>
       </View>
 
-      {/* Total no topo (estilo extrato) */}
-      <View style={{ alignItems: "center", marginBottom: theme.espaco(1) }}>
-        <Text style={[estilos.totalLabel, { color: cores.textoFraco }]}>Total no período</Text>
-        <Text style={[estilos.totalValor, { color: cores.texto }]}>{moeda(dados?.totalGeral ?? 0)}</Text>
-        <Text style={[estilos.totalSub, { color: cores.textoApagado }]}>
-          Peça {moeda(dados?.totalPeca ?? 0)} · Serviço {moeda(dados?.totalServico ?? 0)}
-        </Text>
+      {/* Total no topo (card destacado, estilo extrato) */}
+      <View style={{ paddingHorizontal: theme.espaco(2.5), marginBottom: theme.espaco(1.5) }}>
+        <CardTotal
+          rotulo="Total no período"
+          valor={moeda(dados?.totalGeral ?? 0)}
+          sub={`Peça ${moeda(dados?.totalPeca ?? 0)} · Serviço ${moeda(dados?.totalServico ?? 0)}`}
+        />
       </View>
 
       {carregando ? (
-        <ActivityIndicator color={cores.primaria} size="large" style={{ marginTop: theme.espaco(6) }} />
+        <SkeletonLista linhas={5} />
       ) : erro ? (
-        <Text style={[estilos.centroTxt, { color: cores.primaria }]}>{erro}</Text>
+        <EstadoVazio icone="alert-circle" titulo={erro} subtitulo="Volte e tente de novo." />
       ) : !dados || dados.linhas.length === 0 ? (
-        <Text style={[estilos.centroTxt, { color: cores.textoApagado }]}>Nenhuma OS fechada no período.</Text>
+        <EstadoVazio icone="file-text" titulo="Nenhuma OS fechada no período" />
       ) : (
         <FlatList
           data={dados.linhas}
