@@ -137,8 +137,9 @@ public sealed class RepositorioEstoque
     /// <summary>Itens ATIVOS da empresa (EMPXEST.Ativo) com seus dados de EST. Saldo = 0 (preenchido depois).</summary>
     private List<ItemEstoque> ItensAtivos(int codEmpresa)
     {
+        // Nome do produto = EST.Codinome (confirmado pelo cliente), nao Descricao.
         const string sql = """
-            SELECT e.CodItem AS CodItem, e.Descricao AS Descricao,
+            SELECT e.CodItem AS CodItem, e.Codinome AS Descricao,
                    e.CodigoFabricante AS Fab, e.CodigoInterno AS Interno, e.REFORIG AS Ref,
                    m.PrecoVenda AS PrecoVenda, m.Minimo AS Minimo, m.Ativo AS Ativo
             FROM EMPXEST AS m INNER JOIN EST AS e ON m.CodigoItem = e.CodItem
@@ -228,7 +229,7 @@ public sealed class RepositorioEstoque
         var alvo = cods.ToHashSet();
         // Traz todos e filtra em memoria (evita IN dinamico no OLEDB).
         const string sql = """
-            SELECT CodItem AS CodItem, Descricao AS Descricao,
+            SELECT CodItem AS CodItem, Codinome AS Descricao,
                    CodigoFabricante AS Fab, CodigoInterno AS Interno, REFORIG AS Ref
             FROM EST
             """;
