@@ -278,10 +278,10 @@ public sealed class RepositorioEstoque
 
         // Saidas no periodo que passam no filtro GeraEstoque.
         int noPeriodoGera = 0;
-        foreach (var r in _leitor.Consultar(sqlJoinComPagto(), r => (
-                     pagto: r["CodigoPagto"] is null or DBNull ? -1 : Convert.ToInt32(r["CodigoPagto"])),
+        foreach (var pagto in _leitor.Consultar(sqlJoinComPagto(),
+                     r => r["CodigoPagto"] is null or DBNull ? -1 : Convert.ToInt32(r["CodigoPagto"]),
                      codEmpresa, inicio, fim))
-            if (pagtosGeram.Contains(r.pagto)) noPeriodoGera++;
+            if (pagtosGeram.Contains(pagto)) noPeriodoGera++;
 
         return new
         {
